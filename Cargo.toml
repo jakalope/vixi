@@ -3,5 +3,9 @@ name = "vixi"
 version = "0.1.0"
 authors = ["Jake Askeland <jake.askeland@gmail.com>"]
 
+[lib]
+name = "ordered_vec_map"
+path = "src/ordered_vec_map.rs"
+
 [dependencies]
 termion = { git = "https://github.com/jakalope/termion" }
