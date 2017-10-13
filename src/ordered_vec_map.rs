@@ -1,14 +1,18 @@
 // Provides an ordered map with a method to query for partial matches.
 // This is useful for disambiguation.
-pub struct OrderedVecMap<KeyT, ValueT> where KeyT: std::cmp::Ord {
+pub struct OrderedVecMap<KeyT, ValueT>
+where
+    KeyT: std::cmp::Ord,
+{
     data: Vec<(KeyT, ValueT)>,
 }
 
-impl<KeyT, ValueT> OrderedVecMap<KeyT, ValueT> where KeyT: std::cmp::Ord {
+impl<KeyT, ValueT> OrderedVecMap<KeyT, ValueT>
+where
+    KeyT: std::cmp::Ord,
+{
     pub fn new() -> Self {
-        OrderedVecMap {
-            data: Vec::<(KeyT, ValueT)>::new(),
-        }
+        OrderedVecMap { data: Vec::<(KeyT, ValueT)>::new() }
     }
 
     // Returns true if the value is inserted, false if overwritten.
@@ -17,11 +21,11 @@ impl<KeyT, ValueT> OrderedVecMap<KeyT, ValueT> where KeyT: std::cmp::Ord {
             Ok(idx) => {
                 *self.data.get_mut(idx).unwrap() = datum;
                 return false;
-            },
+            }
             Err(idx) => {
                 self.data.insert(idx, datum);
                 return true;
-            },
+            }
         };
     }
 
@@ -33,12 +37,14 @@ impl<KeyT, ValueT> OrderedVecMap<KeyT, ValueT> where KeyT: std::cmp::Ord {
     }
 
     pub fn find_by<'a, F>(&self, f: F) -> Option<&ValueT>
-            where F: Fn(&(KeyT, ValueT)) -> std::cmp::Ordering,
-                  KeyT: 'a,
-                  ValueT: 'a {
+    where
+        F: Fn(&(KeyT, ValueT)) -> std::cmp::Ordering,
+        KeyT: 'a,
+        ValueT: 'a,
+    {
         match self.data.binary_search_by(f) {
             Ok(idx) => Some(&self.data.get(idx).unwrap().1),
-            Err(_) => None
+            Err(_) => None,
         }
     }
 }
@@ -56,6 +62,5 @@ impl<KeyT, ValueT> From<Vec<(KeyT, ValueT)>> for OrderedVecMap<KeyT, ValueT>
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_find_match() {
-    }
+    fn test_find_match() {}
 }

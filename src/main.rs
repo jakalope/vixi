@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use std::collections::HashMap;
 use termion::event::Key;
 
-type KeyMap = OrderedVecMap<Vec<Key>, Vec<Key>>;
+type KeyMap = OrderedVecMap<Vec<termion::event::Key>, Vec<termion::event::Key>>;
 
 #[allow(dead_code)]
 struct Mode<'a, T> {
@@ -58,10 +58,7 @@ enum Match<T> {
 // keys match the first N map keys.
 // Then, check for full matches. If any are found, return the longest full
 // match, where all map keys match the first N input keys.
-fn find_match<'a>(
-    map: &'a KeyMap,
-    query: &Vec<Key>,
-) -> Match<&'a Vec<Key>> {
+fn find_match<'a>(map: &'a KeyMap, query: &Vec<Key>) -> Match<&'a Vec<Key>> {
     let partial_matcher = |probe: &(Vec<Key>, Vec<Key>)| if probe.0.len() >
         query.len() &&
         probe.0.starts_with(query)
@@ -153,7 +150,6 @@ fn main() {
     typeahead_buffer.push_back(Key::Esc);
 
     let normal_mode = Mode::<NormalMode>::new(&typeahead_buffer);
-
     let insert_mode = Mode::<InsertMode>::from(normal_mode);
     let normal_mode = Mode::<NormalMode>::from(insert_mode);
     normal_mode.echo("asdf");
