@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use std::collections::VecDeque;
 use termion::event::Key;
 
-type KeyMap = OrderedVecMap<Vec<termion::event::Key>, Vec<termion::event::Key>>;
+type KeyMap<T> = OrderedVecMap<Vec<termion::event::Key>, T>;
+type KeyRemap = KeyMap<Vec<termion::event::Key>>;
 
 struct Mode<'a, T> {
     typeahead: &'a VecDeque<Key>,
@@ -56,23 +57,14 @@ impl<'a> From<Mode<'a, NormalMode>> for Mode<'a, InsertMode> {
     }
 }
 
-// fn execute(op_map: &HashMap<Vec<Key>, Op>,
-//            front: &mut Vec<Key>) {
-//     match op_map.get(front) {
-//         Some(op) => { return true; } // TODO op(),
-//         None => { return false; }
-//     };
-//     // Continue processing what's left in the buffer.
-// }
-
 enum Match<T> {
     FullMatch(T),
     PartialMatch(T),
     NoMatch,
 }
 
-fn find_match<'a>(map: &'a KeyMap, query: &Vec<Key>) -> Match<&'a Vec<Key>> {
-    let partial_matcher = |probe: &(Vec<Key>, Vec<Key>)| if probe.0.len() >
+fn find_match<'a, T>(map: &'a KeyMap<T>, query: &Vec<Key>) -> Match<&'a T> {
+    let partial_matcher = |probe: &(Vec<Key>, T)| if probe.0.len() >
         query.len() &&
         probe.0.starts_with(query)
     {
@@ -94,32 +86,12 @@ fn find_match<'a>(map: &'a KeyMap, query: &Vec<Key>) -> Match<&'a Vec<Key>> {
     )
 }
 
-// fn remap(
-//     map: &KeyMap,
-//     front: &Vec<Key>,
-//     typeahead: &mut VecDeque<Key>,
-// ) -> bool {
-//     match find_match(map, front) {
-//         Match::FullMatch(mapped_keys) => {
-//             // Clone mapped keys in front of the typeahead buffer.
-//             for key in mapped_keys {
-//                 typeahead.push_front(key.clone());
-//             }
-//             return true;
-//         }
-//         Match::PartialMatch(_) => {
-//             return false;
-//         }
-//         Match::NoMatch => {
-//             return false;
-//         }
-//     };
-// }
-
 struct ModeMap {
-    key_remap: KeyMap,
-    key_noremap: KeyMap,
-    op_map: HashMap<Vec<Key>, Op>,
+    // TODO Handle noremap (key,value) by surrounding value with non-input-able
+    // keys, so if it gets put in the typeahead, it cannot possibly be remapped.
+    // This would also mean such values would be ignored by the op-map.
+    key_remap: KeyRemap,
+    op_map: KeyMap<Op>,
 }
 
 impl ModeMap {
@@ -150,9 +122,26 @@ impl ModeMap {
                     return;
                 }
             };
+            match find_match(&self.op_map, &front) {
+                Match::FullMatch(op) => {
+                    // TODO Apply op.
+                    // op()
+
+                    // Clear front (ergo, we'll skip matching noremap and op
+                    // until next iteration).
+                    front.clear();
+                }
+                Match::PartialMatch(_) => {
+                    // Keep searching.
+                }
+                Match::NoMatch => {
+                    // We're done searching.
+                    return;
+                }
+            };
         }
         // Put whatever is left back in the typeahead buffer.
-        put_back(&mut front, typeahead);
+        put_back(&front, typeahead);
     }
 }
 
