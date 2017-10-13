@@ -14,9 +14,15 @@ struct Mode<'a, T> {
     mode: T,
 }
 
-fn put_back(front: &Vec<Key>, typeahead: &mut VecDeque<Key>) {
-    for key in front {
-        typeahead.push_front(key.clone());
+fn move_to_front(front: &mut Vec<Key>, typeahead: &mut VecDeque<Key>) {
+    for key in front.drain(..).rev() {
+        typeahead.push_front(key);
+    }
+}
+
+fn prepend(front: &Vec<Key>, typeahead: &mut VecDeque<Key>) {
+    for key in front.iter().rev() {
+        typeahead.push_front(*key);
     }
 }
 
@@ -94,54 +100,78 @@ struct ModeMap {
     op_map: KeyMap<Op>,
 }
 
+fn remap(
+    map: &KeyRemap,
+    front: &mut Vec<Key>,
+    typeahead: &mut VecDeque<Key>,
+) -> bool {
+    match find_match(map, front) {
+        Match::FullMatch(mapped_keys) => {
+            // Put mapped keys in front of the typeahead buffer.
+            prepend(mapped_keys, typeahead);
+            // Clear front (ergo, we'll skip matching noremap and op
+            // until next iteration).
+            front.clear();
+            false
+        }
+        Match::PartialMatch(_) => {
+            // Keep searching.
+            false
+        }
+        Match::NoMatch => {
+            // We're done searching this map.
+            true
+        }
+    }
+}
+
+fn do_op(
+    map: &KeyMap<Op>,
+    front: &mut Vec<Key>,
+    typeahead: &mut VecDeque<Key>,
+) -> bool {
+    match find_match(map, front) {
+        Match::FullMatch(op) => {
+            // TODO Apply op.
+            // op()
+
+            // Clear front (ergo, we'll skip matching noremap and op
+            // until next iteration).
+            front.clear();
+            false
+        }
+        Match::PartialMatch(_) => {
+            // Keep searching.
+            false
+        }
+        Match::NoMatch => {
+            // We're done searching this map.
+            true
+        }
+    }
+}
+
 impl ModeMap {
     // Loop until a partly matching mapping is found or all (local) mappings
     // have been checked.  The longest full match is remembered in "mp_match".
     // A full match is only accepted if there is no partly match, so "aa" and
     // "aaa" can both be mapped.
     // https://github.com/vim/vim/blob/master/src/getchar.c#L2140-L2146
-    fn process(self, typeahead: &mut VecDeque<Key>) {
+    fn process(&self, mut typeahead: &mut VecDeque<Key>) {
         // Grab incrementally more keys from the front of the queue, looking for
         // matches.
         let mut front = Vec::<Key>::with_capacity(typeahead.len());
-        while !typeahead.is_empty() {
+        let mut remap_done = false;
+        let mut op_done = false;
+        while !typeahead.is_empty() && (!remap_done || !op_done) {
             front.push(typeahead.pop_front().unwrap());
-            match find_match(&self.key_remap, &front) {
-                Match::FullMatch(mapped_keys) => {
-                    // Put mapped keys in front of the typeahead buffer.
-                    put_back(mapped_keys, typeahead);
-                    // Clear front (ergo, we'll skip matching noremap and op
-                    // until next iteration).
-                    front.clear();
-                }
-                Match::PartialMatch(_) => {
-                    // Keep searching.
-                }
-                Match::NoMatch => {
-                    // We're done searching.
-                    return;
-                }
-            };
-            match find_match(&self.op_map, &front) {
-                Match::FullMatch(op) => {
-                    // TODO Apply op.
-                    // op()
-
-                    // Clear front (ergo, we'll skip matching noremap and op
-                    // until next iteration).
-                    front.clear();
-                }
-                Match::PartialMatch(_) => {
-                    // Keep searching.
-                }
-                Match::NoMatch => {
-                    // We're done searching.
-                    return;
-                }
-            };
+            remap_done = remap_done ||
+                remap(&self.key_remap, &mut front, &mut typeahead);
+            op_done = op_done ||
+                do_op(&self.op_map, &mut front, &mut typeahead);
         }
         // Put whatever is left back in the typeahead buffer.
-        put_back(&front, typeahead);
+        move_to_front(&mut front, typeahead);
     }
 }
 
