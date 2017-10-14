@@ -1,6 +1,9 @@
-extern crate ordered_vec_map;
 extern crate termion;
 
+mod common;
+mod ordered_vec_map;
+
+use common::{prepend, move_to_front};
 use ordered_vec_map::OrderedVecMap;
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -12,18 +15,6 @@ type KeyRemap = KeyMap<Vec<termion::event::Key>>;
 struct Mode<'a, T> {
     typeahead: &'a VecDeque<Key>,
     mode: T,
-}
-
-fn move_to_front(front: &mut Vec<Key>, typeahead: &mut VecDeque<Key>) {
-    for key in front.drain(..).rev() {
-        typeahead.push_front(key);
-    }
-}
-
-fn prepend(front: &Vec<Key>, typeahead: &mut VecDeque<Key>) {
-    for key in front.iter().rev() {
-        typeahead.push_front(*key);
-    }
 }
 
 struct NormalMode {}

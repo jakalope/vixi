@@ -1,3 +1,5 @@
+use std;
+
 // Provides an ordered map with a method to query for partial matches.
 // This is useful for disambiguation.
 pub struct OrderedVecMap<KeyT, ValueT>
