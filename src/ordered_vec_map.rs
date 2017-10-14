@@ -74,14 +74,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_insert_one_size() {
-        let mut x = OrderedVecMap::<u8, u8>::new();
-        x.insert((4u8, 2u8));
-        assert_eq!(1, x.len());
+    fn test_insert_empty_len() {
+        let x = OrderedVecMap::<u8, u8>::new();
+        assert_eq!(0, x.len());
+        assert_eq!(true, x.is_empty());
     }
 
     #[test]
-    fn test_insert_two_size() {
+    fn test_insert_one_len() {
+        let mut x = OrderedVecMap::<u8, u8>::new();
+        x.insert((4u8, 2u8));
+        assert_eq!(1, x.len());
+        assert_eq!(false, x.is_empty());
+    }
+
+    #[test]
+    fn test_insert_two_len() {
         let mut x = OrderedVecMap::<u8, u8>::new();
         x.insert((4u8, 2u8));
         x.insert((3u8, 3u8));
@@ -89,7 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn test_insert_same_key_size() {
+    fn test_insert_same_key_len() {
         let mut x = OrderedVecMap::<u8, u8>::new();
         x.insert((4u8, 2u8));
         x.insert((3u8, 3u8));
