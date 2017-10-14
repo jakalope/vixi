@@ -78,11 +78,17 @@ where
     K: Ord,
     K: Copy,
 {
+    /// Matches a sequence `Vec<K>` using Vi's mapping rules:
+    /// * First check for partial matches such that query is shorter than the
+    ///   key. In this case, return `Match::PartialMatch`.
+    /// * If no partial match is found, check for a full (exact) match. In this
+    ///   case, return the value it maps to in a `Match::FullMatch` variant.
+    /// * If no partial or full match is found, return `Match::NoMatch`.
     let partial_matcher = |probe: &(Vec<K>, T)| if probe.0.len() >
         query.len() &&
         probe.0.starts_with(query)
     {
-        return Equal;
+        Equal // Found a partial match.
     } else {
         match probe.0.cmp(query) {
             Less => Less,
@@ -91,16 +97,12 @@ where
         }
     };
 
-    // Check for any partial matches against the entire input, where all input
-    // keys match the first N map keys.
     map.find_by(partial_matcher).map_or(
-        // Then, check for full matches. If any are found, return the longest
-        // full match, where all map keys match the first N input keys.
-        // Otherwise, return no match.
-        map.find(query).map_or(Match::NoMatch, |full| {
-            Match::FullMatch(full)
-        }),
-        |_| Match::PartialMatch,
+        map.find(query).map_or(
+            Match::NoMatch, // No partial or full match found.
+            |full| Match::FullMatch(full), // No partial match, found full.
+        ),
+        |_| Match::PartialMatch, // Found a partial match.
     )
 }
 
