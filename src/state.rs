@@ -1,65 +1,94 @@
-use std::cmp::Ordering::Equal;
+use std::fmt::Debug;
+use std::cmp::Ord;
+use std::cmp::Ordering::{Less, Equal, Greater};
 use std::collections::VecDeque;
 use common::{prepend, move_to_front};
 use ordered_vec_map::OrderedVecMap;
-use termion::event::Key;
-
 
 pub enum OpErr {
     NotEnoughArgs(usize),
 }
 
-pub type Op = fn(&Vec<Key>) -> Result<(), OpErr>;
-pub type KeyMap<T> = OrderedVecMap<Vec<Key>, T>;
-pub type KeyRemap = KeyMap<Vec<Key>>;
+// Function pointer transforming a sequence &Vec<K> to a Result<(), OpErr>.
+pub type Op<K> = fn(&Vec<K>) -> Result<(), OpErr>;
 
-pub struct ModeMap {
+// Maps sequence Vec<K> to value of type T.
+pub type SeqMap<K, T> = OrderedVecMap<Vec<K>, T>;
+
+// Maps sequence Vec<K> to sequence Vec<K>.
+pub type SeqRemap<K> = OrderedVecMap<Vec<K>, Vec<K>>;
+
+pub struct ModeMap<K>
+where
+    K: Ord,
+    K: Copy,
+{
     // TODO Handle noremap (key,value) by surrounding value with non-input-able
     // keys, so if it gets put in the typeahead, it cannot possibly be remapped.
     // This would also mean such values would be ignored by the op-map.
-    key_remap: KeyRemap,
-    op_map: KeyMap<Op>,
+    key_remap: SeqRemap<K>,
+    op_map: SeqMap<K, Op<K>>,
 }
 
-pub struct State {
-    typeahead: VecDeque<Key>,
-    insert_mode_map: ModeMap,
-    normal_mode_map: ModeMap,
+pub struct State<K>
+where
+    K: Ord,
+    K: Copy,
+{
+    typeahead: VecDeque<K>,
+    insert_mode_map: ModeMap<K>,
+    normal_mode_map: ModeMap<K>,
 }
 
-impl ModeMap {
+impl<K> ModeMap<K>
+where
+    K: Ord,
+    K: Copy,
+{
     fn new() -> Self {
-        ModeMap {
-            key_remap: KeyRemap::new(),
-            op_map: KeyMap::<Op>::new(),
+        ModeMap::<K> {
+            key_remap: SeqRemap::<K>::new(),
+            op_map: SeqMap::<K, Op<K>>::new(),
         }
     }
 }
 
-impl State {
+impl<K> State<K>
+where
+    K: Ord,
+    K: Copy,
+{
     pub fn new() -> Self {
         State {
-            typeahead: VecDeque::<Key>::new(),
-            insert_mode_map: ModeMap::new(),
-            normal_mode_map: ModeMap::new(),
+            typeahead: VecDeque::<K>::new(),
+            insert_mode_map: ModeMap::<K>::new(),
+            normal_mode_map: ModeMap::<K>::new(),
         }
     }
 }
 
 enum Match<T> {
     FullMatch(T),
-    PartialMatch(T),
+    PartialMatch,
     NoMatch,
 }
 
-fn find_match<'a, T>(map: &'a KeyMap<T>, query: &Vec<Key>) -> Match<&'a T> {
-    let partial_matcher = |probe: &(Vec<Key>, T)| if probe.0.len() >
+fn find_match<'a, K, T>(map: &'a SeqMap<K, T>, query: &Vec<K>) -> Match<&'a T>
+where
+    K: Ord,
+    K: Copy,
+{
+    let partial_matcher = |probe: &(Vec<K>, T)| if probe.0.len() >
         query.len() &&
         probe.0.starts_with(query)
     {
         return Equal;
     } else {
-        return probe.0.cmp(query);
+        match probe.0.cmp(query) {
+            Less => Less,
+            Equal => Less, // When searching for partial matches, ignore equal.
+            Greater => Greater,
+        }
     };
 
     // Check for any partial matches against the entire input, where all input
@@ -71,26 +100,30 @@ fn find_match<'a, T>(map: &'a KeyMap<T>, query: &Vec<Key>) -> Match<&'a T> {
         map.find(query).map_or(Match::NoMatch, |full| {
             Match::FullMatch(full)
         }),
-        |partial| Match::PartialMatch(partial),
+        |_| Match::PartialMatch,
     )
 }
 
 
-fn remap(
-    map: &KeyRemap,
-    front: &mut Vec<Key>,
-    typeahead: &mut VecDeque<Key>,
-) -> bool {
+fn remap<K>(
+    map: &SeqRemap<K>,
+    front: &mut Vec<K>,
+    typeahead: &mut VecDeque<K>,
+) -> bool
+where
+    K: Ord,
+    K: Copy,
+{
     match find_match(map, front) {
         Match::FullMatch(mapped_keys) => {
             // Put mapped keys in front of the typeahead buffer.
             prepend(mapped_keys, typeahead);
-            // Clear front (ergo, we'll skip matching noremap and op
-            // until next iteration).
+            // Clear front (ergo, we'll skip matching noremap and op until next
+            // iteration).
             front.clear();
             false
         }
-        Match::PartialMatch(_) => {
+        Match::PartialMatch => {
             // Keep searching.
             false
         }
@@ -101,7 +134,11 @@ fn remap(
     }
 }
 
-fn do_op(map: &KeyMap<Op>, front: &mut Vec<Key>) -> bool {
+fn do_op<K>(map: &SeqMap<K, Op<K>>, front: &mut Vec<K>) -> bool
+where
+    K: Ord,
+    K: Copy,
+{
     match find_match(map, front) {
         Match::FullMatch(op) => {
             // TODO Apply op.
@@ -112,7 +149,7 @@ fn do_op(map: &KeyMap<Op>, front: &mut Vec<Key>) -> bool {
             front.clear();
             false
         }
-        Match::PartialMatch(_) => {
+        Match::PartialMatch => {
             // Keep searching.
             false
         }
@@ -123,16 +160,20 @@ fn do_op(map: &KeyMap<Op>, front: &mut Vec<Key>) -> bool {
     }
 }
 
-impl ModeMap {
+impl<K> ModeMap<K>
+where
+    K: Ord,
+    K: Copy,
+{
     // Loop until a partly matching mapping is found or all (local) mappings
     // have been checked.  The longest full match is remembered in "mp_match".
     // A full match is only accepted if there is no partly match, so "aa" and
     // "aaa" can both be mapped.
     // https://github.com/vim/vim/blob/master/src/getchar.c#L2140-L2146
-    pub fn process(&self, mut typeahead: &mut VecDeque<Key>) {
+    pub fn process(&self, mut typeahead: &mut VecDeque<K>) {
         // Grab incrementally more keys from the front of the queue, looking for
         // matches.
-        let mut front = Vec::<Key>::with_capacity(typeahead.len());
+        let mut front = Vec::<K>::with_capacity(typeahead.len());
         let mut remap_done = false;
         let mut op_done = false;
         while !typeahead.is_empty() && (!remap_done || !op_done) {
@@ -143,5 +184,80 @@ impl ModeMap {
         }
         // Put whatever is left back in the typeahead buffer.
         move_to_front(&mut front, typeahead);
+    }
+}
+
+#[cfg(test)]
+mod test_find_match {
+    use super::*;
+
+    fn assert_partial_match<T>(m: Match<T>) {
+        match m {
+            Match::PartialMatch => {
+                assert!(true);
+            }
+            Match::FullMatch(_) => {
+                assert!(false);
+            }
+            Match::NoMatch => {
+                assert!(false);
+            }
+        }
+    }
+
+    fn assert_full_match<T>(expected: T, m: Match<T>)
+    where
+        T: PartialEq,
+        T: Debug,
+    {
+        match m {
+            Match::PartialMatch => {
+                assert!(false);
+            }
+            Match::FullMatch(x) => {
+                assert_eq!(expected, x);
+            }
+            Match::NoMatch => {
+                assert!(false);
+            }
+        }
+    }
+
+    fn assert_no_match<T>(m: Match<T>) {
+        match m {
+            Match::PartialMatch => {
+                assert!(false);
+            }
+            Match::FullMatch(x) => {
+                assert!(false);
+            }
+            Match::NoMatch => {
+                assert!(true);
+            }
+        }
+    }
+
+    #[test]
+    fn test_partial_match() {
+        let mut map = SeqMap::<u8, u8>::new();
+        map.insert((vec![1u8, 2u8, 3u8, 4u8], 6u8));
+        let query = vec![1u8, 2u8, 3u8];
+        assert_partial_match(find_match(&map, &query))
+    }
+
+    #[test]
+    fn test_full_match() {
+        let mut map = SeqMap::<u8, u8>::new();
+        map.insert((vec![1u8, 2u8, 3u8], 6u8));
+        let query = vec![1u8, 2u8, 3u8];
+        assert_full_match(&6u8, find_match(&map, &query))
+    }
+
+    #[test]
+    fn test_no_match() {
+        let mut map = SeqMap::<u8, u8>::new();
+        map.insert((vec![1u8, 2u8, 3u8, 4u8], 6u8));
+        let query = vec![2u8, 3u8];
+        assert_no_match(find_match(&map, &query))
     }
 }

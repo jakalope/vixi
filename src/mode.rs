@@ -1,11 +1,12 @@
 use state::State;
+use termion::event::Key;
 
 pub struct NormalMode<'a> {
-    state: &'a State,
+    state: &'a State<Key>,
 }
 
 pub struct InsertMode<'a> {
-    state: &'a State,
+    state: &'a State<Key>,
 }
 
 // Use an enum for modes. This is preferable to a traits approach, since we know
@@ -47,7 +48,7 @@ impl<'a> InsertMode<'a> {
 }
 
 impl<'a> Mode<'a> {
-    pub fn new(state: &'a State) -> Self {
+    pub fn new(state: &'a State<Key>) -> Self {
         Mode::Normal(NormalMode { state: state })
     }
 }
