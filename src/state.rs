@@ -79,7 +79,7 @@ where
     K: Copy,
 {
     /// Matches a sequence `Vec<K>` using Vi's mapping rules:
-    /// * First check for partial matches such that query is shorter than the
+    /// * First check for partial matches such that `query` is shorter than the
     ///   key. In this case, return `Match::PartialMatch`.
     /// * If no partial match is found, check for a full (exact) match. In this
     ///   case, return the value it maps to in a `Match::FullMatch` variant.
@@ -109,55 +109,55 @@ where
 
 fn remap<K>(
     map: &SeqRemap<K>,
-    front: &mut Vec<K>,
+    query: &mut Vec<K>,
     typeahead: &mut VecDeque<K>,
 ) -> bool
 where
     K: Ord,
     K: Copy,
 {
-    match find_match(map, front) {
+    match find_match(map, query) {
         Match::FullMatch(mapped_keys) => {
             // Put mapped keys in front of the typeahead buffer.
             prepend(mapped_keys, typeahead);
-            // Clear front (ergo, we'll skip matching noremap and op until next
+            // Clear query (ergo, we'll skip matching noremap and op until next
             // iteration).
-            front.clear();
-            false
+            query.clear();
+            true
         }
         Match::PartialMatch => {
             // Keep searching.
-            false
+            true
         }
         Match::NoMatch => {
             // We're done searching this map.
-            true
+            false
         }
     }
 }
 
-fn do_op<K>(map: &SeqMap<K, Op<K>>, front: &mut Vec<K>) -> bool
+fn do_op<K>(map: &SeqMap<K, Op<K>>, query: &mut Vec<K>) -> bool
 where
     K: Ord,
     K: Copy,
 {
-    match find_match(map, front) {
+    match find_match(map, query) {
         Match::FullMatch(op) => {
             // TODO Apply op.
             // op()
 
-            // Clear front (ergo, we'll skip matching noremap and op
+            // Clear query (ergo, we'll skip matching noremap and op
             // until next iteration).
-            front.clear();
-            false
+            query.clear();
+            true
         }
         Match::PartialMatch => {
             // Keep searching.
-            false
+            true
         }
         Match::NoMatch => {
             // We're done searching this map.
-            true
+            false
         }
     }
 }
@@ -175,22 +175,58 @@ where
     pub fn process(&self, mut typeahead: &mut VecDeque<K>) {
         // Grab incrementally more keys from the front of the queue, looking for
         // matches.
-        let mut front = Vec::<K>::with_capacity(typeahead.len());
-        let mut remap_done = false;
-        let mut op_done = false;
-        while !typeahead.is_empty() && (!remap_done || !op_done) {
-            front.push(typeahead.pop_front().unwrap());
-            remap_done = remap_done ||
-                remap(&self.key_remap, &mut front, &mut typeahead);
-            op_done = op_done || do_op(&self.op_map, &mut front);
+        let mut query = Vec::<K>::with_capacity(typeahead.len());
+        let mut remapping = true;
+        let mut opping = true;
+        while !typeahead.is_empty() && (remapping || opping) {
+            query.push(typeahead.pop_front().unwrap());
+            remapping = remapping &&
+                remap(&self.key_remap, &mut query, &mut typeahead);
+            opping = opping && do_op(&self.op_map, &mut query);
         }
         // Put whatever is left back in the typeahead buffer.
-        move_to_front(&mut front, typeahead);
+        move_to_front(&mut query, typeahead);
+    }
+}
+
+
+#[cfg(test)]
+mod remap {
+    use super::*;
+
+    #[test]
+    fn no_match() {
+        let mut map = SeqMap::<u8, Vec<u8>>::new();
+        map.insert((vec![2u8, 3u8], vec![6u8]));
+        let mut query = vec![1u8, 2u8, 3u8];
+        let mut typeahead = VecDeque::<u8>::new();
+        assert_eq!(false, remap(&map, &mut query, &mut typeahead));
+        assert!(typeahead.is_empty());
+    }
+
+    #[test]
+    fn partial_match() {
+        let mut map = SeqMap::<u8, Vec<u8>>::new();
+        map.insert((vec![1u8, 2u8, 3u8, 4u8], vec![6u8]));
+        let mut query = vec![1u8, 2u8, 3u8];
+        let mut typeahead = VecDeque::<u8>::new();
+        assert_eq!(true, remap(&map, &mut query, &mut typeahead));
+        assert!(typeahead.is_empty());
+    }
+
+    #[test]
+    fn full_match() {
+        let mut map = SeqMap::<u8, Vec<u8>>::new();
+        map.insert((vec![1u8, 2u8, 3u8], vec![6u8]));
+        let mut query = vec![1u8, 2u8, 3u8];
+        let mut typeahead = VecDeque::<u8>::new();
+        assert_eq!(true, remap(&map, &mut query, &mut typeahead));
+        assert_eq!(VecDeque::from(vec![6u8]), typeahead);
     }
 }
 
 #[cfg(test)]
-mod test_find_match {
+mod find_match {
     use super::*;
 
     fn assert_partial_match<T>(m: Match<T>) {
@@ -240,7 +276,7 @@ mod test_find_match {
     }
 
     #[test]
-    fn test_partial_match() {
+    fn partial_match() {
         let mut map = SeqMap::<u8, u8>::new();
         map.insert((vec![1u8, 2u8, 3u8, 4u8], 6u8));
         let query = vec![1u8, 2u8, 3u8];
@@ -248,7 +284,7 @@ mod test_find_match {
     }
 
     #[test]
-    fn test_full_match() {
+    fn full_match() {
         let mut map = SeqMap::<u8, u8>::new();
         map.insert((vec![1u8, 2u8, 3u8], 6u8));
         let query = vec![1u8, 2u8, 3u8];
@@ -256,7 +292,7 @@ mod test_find_match {
     }
 
     #[test]
-    fn test_no_match() {
+    fn no_match() {
         let mut map = SeqMap::<u8, u8>::new();
         map.insert((vec![1u8, 2u8, 3u8, 4u8], 6u8));
         let query = vec![2u8, 3u8];
