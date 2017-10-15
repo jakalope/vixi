@@ -1,5 +1,10 @@
 use std;
 
+pub enum InsertionResult {
+    Create,
+    Overwrite,
+}
+
 // Provides an ordered map with a method to query for partial matches.
 // This is useful for disambiguation.
 pub struct OrderedVecMap<KeyT, ValueT>
@@ -26,15 +31,15 @@ where
     }
 
     // Returns true if the value is inserted, false if overwritten.
-    pub fn insert(&mut self, datum: (KeyT, ValueT)) -> bool {
+    pub fn insert(&mut self, datum: (KeyT, ValueT)) -> InsertionResult {
         match self.data.binary_search_by(|probe| probe.0.cmp(&datum.0)) {
             Ok(idx) => {
                 *self.data.get_mut(idx).unwrap() = datum;
-                return false;
+                return InsertionResult::Overwrite;
             }
             Err(idx) => {
                 self.data.insert(idx, datum);
-                return true;
+                return InsertionResult::Create;
             }
         };
     }
@@ -83,7 +88,12 @@ mod tests {
     #[test]
     fn test_insert_one_len() {
         let mut x = OrderedVecMap::<u8, u8>::new();
-        x.insert((4u8, 2u8));
+        match x.insert((4u8, 2u8)) {
+            InsertionResult::Overwrite => {
+                assert!(false);
+            }
+            _ => {}
+        };
         assert_eq!(1, x.len());
         assert_eq!(false, x.is_empty());
     }
@@ -91,17 +101,42 @@ mod tests {
     #[test]
     fn test_insert_two_len() {
         let mut x = OrderedVecMap::<u8, u8>::new();
-        x.insert((4u8, 2u8));
-        x.insert((3u8, 3u8));
+        match x.insert((4u8, 2u8)) {
+            InsertionResult::Overwrite => {
+                assert!(false);
+            }
+            _ => {}
+        };
+        match x.insert((3u8, 3u8)) {
+            InsertionResult::Overwrite => {
+                assert!(false);
+            }
+            _ => {}
+        };
         assert_eq!(2, x.len());
     }
 
     #[test]
     fn test_insert_same_key_len() {
         let mut x = OrderedVecMap::<u8, u8>::new();
-        x.insert((4u8, 2u8));
-        x.insert((3u8, 3u8));
-        x.insert((3u8, 3u8));
+        match x.insert((4u8, 2u8)) {
+            InsertionResult::Overwrite => {
+                assert!(false);
+            }
+            _ => {}
+        };
+        match x.insert((3u8, 3u8)) {
+            InsertionResult::Overwrite => {
+                assert!(false);
+            }
+            _ => {}
+        };
+        match x.insert((3u8, 3u8)) {
+            InsertionResult::Create => {
+                assert!(false);
+            }
+            _ => {}
+        };
         assert_eq!(2, x.len());
     }
 

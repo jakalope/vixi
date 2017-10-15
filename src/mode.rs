@@ -1,12 +1,13 @@
 use state::State;
 use termion::event::Key;
+use op::{NormalOp, InsertOp};
 
 pub struct NormalMode<'a> {
-    state: &'a State<Key>,
+    state: &'a mut State<Key>,
 }
 
 pub struct InsertMode<'a> {
-    state: &'a State<Key>,
+    state: &'a mut State<Key>,
 }
 
 // Use an enum for modes. This is preferable to a traits approach, since we know
@@ -33,22 +34,50 @@ impl<'a> Mode<'a> {
 
 impl<'a> NormalMode<'a> {
     pub fn process(self) -> Mode<'a> {
-        // Simplified during design phase. Ultimately, each mode's process()
-        // method will be it's way of interacting with Vixi's state.
-        Mode::Insert(InsertMode { state: self.state })
+        match self.state.normal_mode_map.process(
+            &mut self.state.typeahead,
+        ) {
+            None => {
+                // In Normal mode, unmatched typeahead gets dropped.
+                self.state.typeahead.clear();
+            } 
+            Some(op) => {
+                match op {
+                    NormalOp::Insert => {
+                        return Mode::Insert(InsertMode { state: self.state });
+                    }
+                }
+            }
+        };
+        // Stay in normal mode.
+        return Mode::Normal(self);
     }
 }
 
 impl<'a> InsertMode<'a> {
     pub fn process(self) -> Mode<'a> {
-        // Simplified during design phase. Ultimately, each mode's process()
-        // method will be it's way of interacting with Vixi's state.
-        Mode::Normal(NormalMode { state: self.state })
+        match self.state.insert_mode_map.process(
+            &mut self.state.typeahead,
+        ) {
+            None => {
+                // In Insert mode, unmatched typeahead gets passed to the editor.
+                self.state.typeahead.clear();
+            } 
+            Some(op) => {
+                match op {
+                    InsertOp::Cancel => {
+                        return Mode::Normal(NormalMode { state: self.state });
+                    }
+                }
+            }
+        }
+        // Stay in insert mode.
+        return Mode::Insert(self);
     }
 }
 
 impl<'a> Mode<'a> {
-    pub fn new(state: &'a State<Key>) -> Self {
+    pub fn new(state: &'a mut State<Key>) -> Self {
         Mode::Normal(NormalMode { state: state })
     }
 }
@@ -59,15 +88,15 @@ mod test {
 
     #[test]
     fn test_insert_from_normal() {
-        let state = State::new();
-        let normal_mode = Mode::new(&state);
+        let mut state = State::new();
+        let normal_mode = Mode::new(&mut state);
         let insert_mode = normal_mode.process();
     }
 
     #[test]
     fn test_normal_from_insert() {
-        let state = State::new();
-        let normal_mode = Mode::new(&state);
+        let mut state = State::new();
+        let normal_mode = Mode::new(&mut state);
         let insert_mode = normal_mode.process();
         let normal_mode = insert_mode.process();
     }
