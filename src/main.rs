@@ -5,6 +5,7 @@ mod mode;
 mod op;
 mod ordered_vec_map;
 mod state;
+mod mode_map;
 
 fn main() {
     let mut state = state::State::new();

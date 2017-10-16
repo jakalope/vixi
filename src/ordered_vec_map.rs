@@ -1,4 +1,6 @@
-use std;
+use std::cmp::Ord;
+use std::cmp::Ordering;
+use std::convert::From;
 
 pub enum InsertionResult {
     Create,
@@ -7,19 +9,19 @@ pub enum InsertionResult {
 
 // Provides an ordered map with a method to query for partial matches.
 // This is useful for disambiguation.
-pub struct OrderedVecMap<KeyT, ValueT>
+pub struct OrderedVecMap<K, T>
 where
-    KeyT: std::cmp::Ord,
+    K: Ord,
 {
-    data: Vec<(KeyT, ValueT)>,
+    data: Vec<(K, T)>,
 }
 
-impl<KeyT, ValueT> OrderedVecMap<KeyT, ValueT>
+impl<K, T> OrderedVecMap<K, T>
 where
-    KeyT: std::cmp::Ord,
+    K: Ord,
 {
     pub fn new() -> Self {
-        OrderedVecMap { data: Vec::<(KeyT, ValueT)>::new() }
+        OrderedVecMap { data: Vec::<(K, T)>::new() }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -31,7 +33,7 @@ where
     }
 
     // Returns true if the value is inserted, false if overwritten.
-    pub fn insert(&mut self, datum: (KeyT, ValueT)) -> InsertionResult {
+    pub fn insert(&mut self, datum: (K, T)) -> InsertionResult {
         match self.data.binary_search_by(|probe| probe.0.cmp(&datum.0)) {
             Ok(idx) => {
                 *self.data.get_mut(idx).unwrap() = datum;
@@ -44,18 +46,18 @@ where
         };
     }
 
-    pub fn find(&self, query: &KeyT) -> Option<&ValueT> {
+    pub fn find(&self, query: &K) -> Option<&T> {
         match self.data.binary_search_by(|probe| probe.0.cmp(query)) {
             Ok(idx) => Some(&self.data.get(idx).unwrap().1),
             Err(_) => None,
         }
     }
 
-    pub fn find_by<'a, F>(&self, f: F) -> Option<&ValueT>
+    pub fn find_by<'a, F>(&self, f: F) -> Option<&T>
     where
-        F: Fn(&(KeyT, ValueT)) -> std::cmp::Ordering,
-        KeyT: 'a,
-        ValueT: 'a,
+        F: Fn(&(K, T)) -> Ordering,
+        K: 'a,
+        T: 'a,
     {
         match self.data.binary_search_by(f) {
             Ok(idx) => Some(&self.data.get(idx).unwrap().1),
@@ -64,13 +66,13 @@ where
     }
 }
 
-impl<KeyT, ValueT> From<Vec<(KeyT, ValueT)>> for OrderedVecMap<KeyT, ValueT>
-        where KeyT: std::cmp::Ord {
-    fn from(mut data: Vec<(KeyT, ValueT)>) -> OrderedVecMap<KeyT, ValueT> {
+impl<K, T> From<Vec<(K, T)>> for OrderedVecMap<K, T>
+where
+    K: Ord,
+{
+    fn from(mut data: Vec<(K, T)>) -> OrderedVecMap<K, T> {
         data.sort_by(|a, b| a.0.cmp(&b.0));
-        OrderedVecMap {
-            data: data,
-        }
+        OrderedVecMap { data: data }
     }
 }
 
