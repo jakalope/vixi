@@ -78,26 +78,10 @@ where
         }
     };
 
-    let full_matcher = |probe: &(Vec<K>, T)| match probe.0.cmp(query) {
-        Less => {
-            return if probe.0.len() <= query.len() &&
-                query.starts_with(&probe.0)
-            {
-                Equal
-            } else {
-                Less
-            };
-        }
-        Equal => Equal,
-        Greater => Greater,
-    };
-
     map.find_by(partial_matcher).map_or(
-        map.find_by(full_matcher).map_or(
+        map.find(query).map_or(
             Match::NoMatch, // No partial or full match found.
-            |full| {
-                Match::FullMatch(full)
-            }, // No partial match, found full.
+            |full| Match::FullMatch(full), // No partial match, found full.
         ),
         |_| Match::PartialMatch, // Found a partial match.
     )
@@ -310,6 +294,16 @@ mod find_match {
     #[test]
     fn full_match() {
         let mut map = OrderedVecMap::<Vec<u8>, u8>::new();
+        map.insert((vec![1u8, 2u8, 3u8], 6u8));
+        let query = vec![1u8, 2u8, 3u8];
+        assert_full_match(&6u8, find_match(&map, &query))
+    }
+
+    #[test]
+    fn best_full_match() {
+        let mut map = OrderedVecMap::<Vec<u8>, u8>::new();
+        map.insert((vec![1u8], 4u8));
+        map.insert((vec![1u8, 2u8], 5u8));
         map.insert((vec![1u8, 2u8, 3u8], 6u8));
         let query = vec![1u8, 2u8, 3u8];
         assert_full_match(&6u8, find_match(&map, &query))
