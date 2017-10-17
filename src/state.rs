@@ -50,7 +50,7 @@ enum Match<T> {
 /// Matches a sequence `Vec<K>` using Vi's mapping rules:
 /// * First check for partial matches such that `query` is shorter than the key.
 ///   In this case, return `Match::PartialMatch`.
-/// * If no partial match is found, check for a full (exact) match. In this
+/// * If no partial match is found, check for a full match. In this
 ///   case, return the value it maps to in a `Match::FullMatch` variant.
 /// * If no partial or full match is found, return `Match::NoMatch`.
 fn find_match<'a, K, T>(
@@ -60,33 +60,50 @@ fn find_match<'a, K, T>(
 where
     K: Ord,
 {
-    let partial_matcher = |probe: &(Vec<K>, T)| if probe.0.len() >
-        query.len() &&
-        probe.0.starts_with(query)
-    {
-        Equal // Found a partial match.
-    } else {
-        match probe.0.cmp(query) {
-            Less => Less,
-            Equal => Less, // When searching for partial matches, ignore equal.
-            Greater => Greater,
-        }
-    };
-
     if query.is_empty() {
         return Match::NoMatch;
     }
 
+    let partial_matcher = |probe: &(Vec<K>, T)| match probe.0.cmp(query) {
+        Less => Less,
+        Equal => Less, // When searching for partial matches, ignore equal.
+        Greater => {
+            return if probe.0.len() > query.len() &&
+                probe.0.starts_with(query)
+            {
+                Equal
+            } else {
+                Greater
+            };
+        }
+    };
+
+    let full_matcher = |probe: &(Vec<K>, T)| match probe.0.cmp(query) {
+        Less => {
+            return if probe.0.len() <= query.len() &&
+                query.starts_with(&probe.0)
+            {
+                Equal
+            } else {
+                Less
+            };
+        }
+        Equal => Equal,
+        Greater => Greater,
+    };
+
     map.find_by(partial_matcher).map_or(
-        map.find(query).map_or(
+        map.find_by(full_matcher).map_or(
             Match::NoMatch, // No partial or full match found.
-            |full| Match::FullMatch(full), // No partial match, found full.
+            |full| {
+                Match::FullMatch(full)
+            }, // No partial match, found full.
         ),
         |_| Match::PartialMatch, // Found a partial match.
     )
 }
 
-/// If `query` is a full (exact) match to a key found in `map`, the
+/// If `query` is a full match to a key found in `map`, the
 /// corresponding map value is prepended to the typeahead buffer.
 /// Returns `true` if a full or partial match is found. Otherwise, `false`.
 fn remap<K>(
@@ -144,6 +161,7 @@ where
         let mut query = Vec::<K>::with_capacity(typeahead.len());
         let mut mapping = true;
         let mut opping = true;
+        // TODO no longer need to incrementally add elements to the query.
         while !typeahead.is_empty() && (mapping || opping) {
             query.push(typeahead.pop_front().unwrap());
             mapping = mapping &&
