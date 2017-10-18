@@ -2,6 +2,7 @@ use std::cmp::Ord;
 use std::cmp::Ordering;
 use std::convert::From;
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum InsertionResult {
     Create,
     Overwrite,

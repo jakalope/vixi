@@ -9,12 +9,13 @@ use std::collections::VecDeque;
 /// * K is a map's key type, implementing `Copy` and `Ord`.
 /// * T is an arbitrary type, typically stored as a value in a map.
 /// * Op is an arbitrary operation type (typically a mode-specific enum).
-
+#[derive(Debug, PartialEq)]
 pub enum OpErr {
     EmptyKey,
     NotEnoughArgs(usize),
 }
 
+#[derive(Debug, PartialEq)]
 pub enum RemapErr {
     EmptyKey,
 }
@@ -41,6 +42,7 @@ where
     pub insert_mode_map: ModeMap<K, InsertOp>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 enum Match<T> {
     FullMatch(T),
     PartialMatch,
@@ -244,51 +246,12 @@ mod remap {
 #[cfg(test)]
 mod find_match {
     use super::*;
-    use std::fmt::Debug;
-
-    fn assert_partial_match<T>(m: Match<T>) {
-        match m {
-            Match::PartialMatch => {
-                assert!(true);
-            }
-            _ => {
-                assert!(false);
-            }
-        }
-    }
-
-    fn assert_full_match<T>(expected: T, m: Match<T>)
-    where
-        T: PartialEq,
-        T: Debug,
-    {
-        match m {
-            Match::FullMatch(x) => {
-                assert_eq!(expected, x);
-            }
-            _ => {
-                assert!(false);
-            }
-        }
-    }
-
-    fn assert_no_match<T>(m: Match<T>) {
-        match m {
-            Match::NoMatch => {
-                assert!(true);
-            }
-            _ => {
-                assert!(false);
-            }
-        }
-    }
-
     #[test]
     fn partial_match() {
         let mut map = OrderedVecMap::<Vec<u8>, u8>::new();
         map.insert((vec![1u8, 2u8, 3u8, 4u8], 6u8));
         let query = vec![1u8, 2u8, 3u8];
-        assert_partial_match(find_match(&map, &query))
+        assert_eq!(Match::PartialMatch, find_match(&map, &query))
     }
 
     #[test]
@@ -296,7 +259,7 @@ mod find_match {
         let mut map = OrderedVecMap::<Vec<u8>, u8>::new();
         map.insert((vec![1u8, 2u8, 3u8], 6u8));
         let query = vec![1u8, 2u8, 3u8];
-        assert_full_match(&6u8, find_match(&map, &query))
+        assert_eq!(Match::FullMatch(&6u8), find_match(&map, &query))
     }
 
     #[test]
@@ -306,7 +269,7 @@ mod find_match {
         map.insert((vec![1u8, 2u8], 5u8));
         map.insert((vec![1u8, 2u8, 3u8], 6u8));
         let query = vec![1u8, 2u8, 3u8];
-        assert_full_match(&6u8, find_match(&map, &query))
+        assert_eq!(Match::FullMatch(&6u8), find_match(&map, &query))
     }
 
     #[test]
@@ -314,7 +277,7 @@ mod find_match {
         let mut map = OrderedVecMap::<Vec<u8>, u8>::new();
         map.insert((vec![1u8, 2u8, 3u8, 4u8], 6u8));
         let query = vec![2u8, 3u8];
-        assert_no_match(find_match(&map, &query))
+        assert_eq!(Match::NoMatch, find_match(&map, &query))
     }
 
     #[test]
@@ -322,6 +285,129 @@ mod find_match {
         let mut map = OrderedVecMap::<Vec<u8>, u8>::new();
         map.insert((vec![1u8, 2u8, 3u8, 4u8], 6u8));
         let query = vec![];
-        assert_no_match(find_match(&map, &query))
+        assert_eq!(Match::NoMatch, find_match(&map, &query))
+    }
+}
+
+#[cfg(test)]
+mod mode_map {
+    use super::*;
+
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    enum TestOp {
+        ThingOne,
+        ThingTwo,
+    }
+
+    #[test]
+    fn process_one_op() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8], TestOp::ThingOne)
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+        typeahead.push_back(1u8);
+
+        assert_eq!(Some(TestOp::ThingOne), mode_map.process(&mut typeahead));
+        assert!(typeahead.is_empty());
+    }
+
+    #[test]
+    fn process_two_ops() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8], TestOp::ThingOne)
+        );
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![2u8], TestOp::ThingTwo)
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+        typeahead.push_back(2u8);
+
+        assert_eq!(Some(TestOp::ThingTwo), mode_map.process(&mut typeahead));
+        assert!(typeahead.is_empty());
+    }
+
+    #[test]
+    fn process_put_back_leftovers() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8], TestOp::ThingOne)
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+        typeahead.push_back(1u8);
+        typeahead.push_back(1u8);
+
+        assert_eq!(Some(TestOp::ThingOne), mode_map.process(&mut typeahead));
+        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(None, typeahead.pop_front());
+    }
+
+    #[test]
+    fn process_remap() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_remap(vec![1u8], vec![2u8])
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+        typeahead.push_back(1u8);
+        typeahead.push_back(1u8);
+
+        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Some(2u8), typeahead.pop_front());
+        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(None, typeahead.pop_front());
+    }
+
+    #[test]
+    fn process_overspecified_remap() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_remap(vec![1u8, 1u8, 1u8], vec![2u8])
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+        typeahead.push_back(1u8);
+        typeahead.push_back(1u8);
+
+        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(None, typeahead.pop_front());
+    }
+
+    #[test]
+    fn process_remap_then_op() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_remap(vec![1u8], vec![2u8])
+        );
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8], TestOp::ThingOne)
+        );
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![2u8], TestOp::ThingTwo)
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+        typeahead.push_back(1u8);
+        typeahead.push_back(1u8);
+
+        assert_eq!(Some(TestOp::ThingTwo), mode_map.process(&mut typeahead));
+        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(None, typeahead.pop_front());
     }
 }

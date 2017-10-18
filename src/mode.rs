@@ -98,7 +98,7 @@ mod test {
     fn test_insert_from_normal() {
         let mut state = State::new();
         let normal_mode = Mode::new(&mut state);
-        let insert_mode = normal_mode.process();
+        let _ = normal_mode.process();
     }
 
     #[test]
@@ -106,6 +106,6 @@ mod test {
         let mut state = State::new();
         let normal_mode = Mode::new(&mut state);
         let insert_mode = normal_mode.process();
-        let normal_mode = insert_mode.process();
+        let _ = insert_mode.process();
     }
 }
