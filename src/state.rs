@@ -4,6 +4,7 @@ use ordered_vec_map::{InsertionResult, OrderedVecMap};
 use std::cmp::Ord;
 use std::cmp::Ordering::{Less, Equal, Greater};
 use std::collections::VecDeque;
+use std::mem::swap;
 
 /// By convention:
 /// * K is a map's key type, implementing `Copy` and `Ord`.
@@ -18,19 +19,23 @@ pub enum OpErr {
 #[derive(Debug, PartialEq)]
 pub enum RemapErr {
     EmptyKey,
+    KeyValueEqual,
 }
 
-pub struct ModeMap<K, Op>
+#[derive(Ord, PartialOrd, Eq, Clone, Debug, PartialEq)]
+pub enum MappedObject<K, Op>
 where
     K: Ord,
     K: Copy,
 {
-    // TODO Handle noremap (key,value) by surrounding value with non-input-able
-    // keys, so if it gets put in the typeahead, it cannot possibly be remapped.
-    // This would also mean such values would be ignored by the op-map.
-    key_map: OrderedVecMap<Vec<K>, Vec<K>>,
-    op_map: OrderedVecMap<Vec<K>, Op>,
+    Seq(Vec<K>),
+    Op(Op),
 }
+
+// TODO Handle noremap (key,value) by surrounding value with non-input-able
+// keys, so if it gets put in the typeahead, it cannot possibly be remapped.
+// This would also mean such values would be ignored by the op-map.
+pub type ModeMap<K, Op> = OrderedVecMap<Vec<K>, MappedObject<K, Op>>;
 
 pub struct State<K>
 where
@@ -49,78 +54,225 @@ enum Match<T> {
     NoMatch,
 }
 
+fn match_length<K>(query: &Vec<K>, probe: &Vec<K>) -> usize
+where
+    K: Ord,
+{
+    let mut match_len: usize = 0;
+    while {
+        let p = probe.get(match_len);
+        let q = query.get(match_len);
+        match_len += 1;
+        p.and(q).is_some() && p.cmp(&q) == Equal // Loop criteria
+    }
+    {}
+    match_len - 1
+}
+
+#[cfg(test)]
+mod match_length {
+    use super::*;
+
+    #[test]
+    fn exact() {
+        let p = Vec::<u8>::from("asdf".as_bytes());
+        let q = Vec::<u8>::from("asdf".as_bytes());
+        assert_eq!("asdf".as_bytes().len(), match_length(&q, &p));
+    }
+
+    #[test]
+    fn longer_q() {
+        let p = Vec::<u8>::from("asd".as_bytes());
+        let q = Vec::<u8>::from("asdf".as_bytes());
+        assert_eq!("asd".as_bytes().len(), match_length(&q, &p));
+    }
+
+    #[test]
+    fn longer_p() {
+        let p = Vec::<u8>::from("asdf".as_bytes());
+        let q = Vec::<u8>::from("asd".as_bytes());
+        assert_eq!("asd".as_bytes().len(), match_length(&q, &p));
+    }
+
+    #[test]
+    fn both_zero() {
+        let p = Vec::<u8>::from("".as_bytes());
+        let q = Vec::<u8>::from("".as_bytes());
+        assert_eq!(0, match_length(&q, &p));
+    }
+
+    #[test]
+    fn zero_q() {
+        let p = Vec::<u8>::from("asdf".as_bytes());
+        let q = Vec::<u8>::from("".as_bytes());
+        assert_eq!(0, match_length(&q, &p));
+    }
+}
+
+//
+// MatchLen   KeyLen     QueryLen  MatchLen   v- MatchLen = min(QueryLen,  KeyLen)
+// ----------------------------------------
+//          <           <         <             Not possible
+//          <           <         =             Not possible
+//     1    <     3     <    5    >   1         MatchLen <  KeyLen < QueryLen
+//          <           =         <             Not possible
+//          <           =         =             Not possible
+//     1    <     5     =    5    >   1         MatchLen <  KeyLen = QueryLen
+//     3    <     5     >    1    <   3       x QueryLen < MatchLen <  KeyLen
+//     3    <     5     >    3    =   3         MatchLen = QueryLen <  KeyLen
+//     1    <     5     >    3    >   1         MatchLen < QueryLen <  KeyLen
+//          =           <         <             Not possible
+//          =           <         =             Not possible
+//     1    =     1     <    5    >   1         MatchLen =  KeyLen < QueryLen
+//          =           =         <             Not possible
+//     3    =     3     =    3    =   3         MatchLen =  KeyLen = QueryLen
+//          =           =         >             Not possible
+//     5    =     5     >    3    <   5       x QueryLen < MatchLen =  KeyLen
+//          =           >         =             Not possible
+//          =           >         >             Not possible
+//  Not allowed to have == and (< or >).
+//  Not allowed to have =  and (<< or >>).
+//  Not allowed to have <<<.
+//
+//  Summary:
+//    MatchLen < QueryLen <  KeyLen   =>  Not a match
+//    MatchLen <  KeyLen  < QueryLen  =>  Not a match
+//    MatchLen <  KeyLen  = QueryLen  =>  Not a match
+//    MatchLen = QueryLen <  KeyLen   =>  Partial match |
+//    MatchLen =  KeyLen  < QueryLen  =>  Full match    |- MatchLen >=
+//    MatchLen =  KeyLen  = QueryLen  =>  Full match    |  min(QueryLen, KeyLen)
+
+fn find_match<'a, K, T>(
+    map: &'a OrderedVecMap<Vec<K>, T>,
+    query: &Vec<K>,
+) -> Match<&'a (Vec<K>, T)>
+where
+    K: Ord,
+{
+    let query_len = query.len();
+    if query_len == 0 {
+        return Match::NoMatch;
+    }
+    let mut longest_match_key_len: usize = 0;
+    let mut longest_match: Option<&(Vec<K>, T)> = None;
+    for kv in map.iter() {
+        let match_len = match_length(query, &kv.0);
+        let key_len = kv.0.len();
+        if (match_len >= query_len || match_len >= key_len) &&
+            key_len > longest_match_key_len
+        {
+            longest_match = Some(kv);
+            longest_match_key_len = key_len;
+        }
+    }
+    if longest_match_key_len > query_len {
+        Match::PartialMatch
+    } else if longest_match.is_some() {
+        Match::FullMatch(longest_match.unwrap())
+    } else {
+        Match::NoMatch
+    }
+}
+
 /// Matches a sequence `Vec<K>` using Vi's mapping rules:
 /// * First check for partial matches such that `query` is shorter than the key.
 ///   In this case, return `Match::PartialMatch`.
 /// * If no partial match is found, check for a full match. In this
 ///   case, return the value it maps to in a `Match::FullMatch` variant.
 /// * If no partial or full match is found, return `Match::NoMatch`.
-fn find_match<'a, K, T>(
-    map: &'a OrderedVecMap<Vec<K>, T>,
-    query: &Vec<K>,
-) -> Match<&'a T>
-where
-    K: Ord,
-{
-    if query.is_empty() {
-        return Match::NoMatch;
-    }
+// fn find_match<'a, K, T>(
+//     map: &'a OrderedVecMap<Vec<K>, T>,
+//     query: &Vec<K>,
+// ) -> Match<&'a (Vec<K>, T)>
+// where
+//     K: Ord,
+// {
+//     if query.is_empty() {
+//         return Match::NoMatch;
+//     }
 
-    let partial_matcher = |probe: &(Vec<K>, T)| match probe.0.cmp(query) {
-        Less => Less,
-        Equal => Less, // When searching for partial matches, ignore equal.
-        Greater => {
-            return if probe.0.len() > query.len() &&
-                probe.0.starts_with(query)
-            {
-                Equal
-            } else {
-                Greater
-            };
-        }
-    };
+//     let partial_matcher = |probe: &(Vec<K>, T)| match probe.0.cmp(query) {
+//         Less => Less,
+//         Equal => Less, // When searching for partial matches, ignore equal.
+//         Greater => {
+//             return if probe.0.len() > query.len() &&
+//                 probe.0.starts_with(query)
+//             {
+//                 Equal
+//             } else {
+//                 Greater
+//             };
+//         }
+//     };
 
-    map.find_by(partial_matcher).map_or(
-        map.find(query).map_or(
-            Match::NoMatch, // No partial or full match found.
-            |full| Match::FullMatch(full), // No partial match, found full.
-        ),
-        |_| Match::PartialMatch, // Found a partial match.
-    )
-}
+//     let full_matcher = |probe: &(Vec<K>, T)| match probe.0.cmp(query) {
+//         Less => {
+//             return if query.starts_with(&probe.0) {
+//                 Equal
+//             } else {
+//                 Less
+//             };
+//         }
+//         Equal => Equal,
+//         Greater => Greater,
+//     };
 
+//     map.find_by(partial_matcher).map_or(
+//         map.find_all_by(full_matcher).map_or(
+//             Match::NoMatch, // No partial or full match found.
+//             |full| {
+//                 Match::FullMatch(full)
+//             }, // No partial match, found full.
+//         ),
+//         |_| Match::PartialMatch, // Found a partial match.
+//     )
+// }
 /// If `query` is a full match to a key found in `map`, the
 /// corresponding map value is prepended to the typeahead buffer.
 /// Returns `true` if a full or partial match is found. Otherwise, `false`.
+// fn remap<K>(
+//     map: &OrderedVecMap<Vec<K>, Vec<K>>,
+//     query: &mut Vec<K>,
+//     typeahead: &mut VecDeque<K>,
+// ) -> bool
+// where
+//     K: Ord,
+//     K: Copy,
+// {
+//     match find_match(map, query) {
+//         Match::FullMatch(mapped_keys) => {
+//             match mapped_keys {
+//                 MappedObject::Seq(seq) => {
+//                     let len = mapped_keys.0.len();
+//                     typeahead =
+//                         mapped_keys.1.splice(..len, query.iter()).collect();
+//                 }
+//                 MappedObject::Op(op) => Some(op),
+//             }
+//             true
+//         }
+//         Match::PartialMatch => {
+//             // Keep searching.
+//             true
+//         }
+//         Match::NoMatch => {
+//             // We're done searching this map.
+//             false
+//         }
+//     }
+// }
+
 fn remap<K>(
-    map: &OrderedVecMap<Vec<K>, Vec<K>>,
-    query: &mut Vec<K>,
+    from: &Vec<K>,
+    mut to: Vec<K>,
+    mut query: Vec<K>,
     typeahead: &mut VecDeque<K>,
-) -> bool
-where
-    K: Ord,
-    K: Copy,
+) where
+    K: Clone,
 {
-    match find_match(map, query) {
-        Match::FullMatch(mapped_keys) => {
-            // Put mapped keys in front of the typeahead buffer.
-            for key in mapped_keys.iter().rev() {
-                typeahead.push_front(*key);
-            }
-            // Clear query (ergo, we'll skip matching noremap and op until next
-            // iteration).
-            query.clear();
-            true
-        }
-        Match::PartialMatch => {
-            // Keep searching.
-            true
-        }
-        Match::NoMatch => {
-            // We're done searching this map.
-            false
-        }
-    }
+    let len = from.len();
+    let mut deque: VecDeque<K> = query.splice(..len, to.clone()).collect();
+    swap(typeahead, &mut deque);
 }
 
 impl<K, Op> ModeMap<K, Op>
@@ -129,44 +281,59 @@ where
     K: Copy,
     Op: Copy,
 {
-    pub fn new() -> Self {
-        ModeMap {
-            key_map: OrderedVecMap::<Vec<K>, Vec<K>>::new(),
-            op_map: OrderedVecMap::<Vec<K>, Op>::new(),
-        }
-    }
+    /// Process a typeahead buffer, incrementally adding characters to the
+    /// search query between searches. On each iteration:
+    /// * Search for partial matches in the remap map. If found, exit.
+    /// * Otherwise, search for a full (exact) match in the remap map.
+    /// * If found, clear the query and put the match in front of the typeahead
+    ///   buffer to start the process over.
+    /// * Otherwise, search for partial matches in the operations map. If found,
+    ///   exit.
+    /// * Otherwise, search for a full (exact) match in the operations map.
+    /// * If found, clear the query and exit, returning the found operation.
+    /// * Otherwise, put the query back in front of the typeahead buffer and
+    ///   exit.
+    pub fn process(&self, typeahead: &mut VecDeque<K>) -> Option<Op> {
+        const MAXIMUM_REMAP_RECURSION_LIMIT: u32 = 10000u32;
 
-    // Loop until a partly matching mapping is found or all (local) mappings
-    // have been checked.  The longest full match is remembered in "mp_match".
-    // A full match is only accepted if there is no partly match, so "aa" and
-    // "aaa" can both be mapped.
-    // https://github.com/vim/vim/blob/master/src/getchar.c#L2140-L2146
-    pub fn process(&self, mut typeahead: &mut VecDeque<K>) -> Option<Op> {
-        // Grab incrementally more keys from the front of the queue, looking for
-        // matches.
         let mut query = Vec::<K>::with_capacity(typeahead.len());
-        let mut mapping = true;
-        let mut opping = true;
-        // TODO no longer need to incrementally add elements to the query.
-        while !typeahead.is_empty() && (mapping || opping) {
+
+        while !typeahead.is_empty() {
             query.push(typeahead.pop_front().unwrap());
-            mapping = mapping &&
-                remap(&self.key_map, &mut query, &mut typeahead);
-            match find_match(&self.op_map, &mut query) {
-                Match::FullMatch(op) => {
-                    return Some(*op);
+        }
+
+        // Grab keys from the front of the queue, looking for matches.
+        match find_match(&self, &query) {
+            Match::FullMatch(mapped) => {
+                match mapped.1 {
+                    MappedObject::Seq(ref remapped) => {
+                        remap(&mapped.0, remapped.clone(), query, typeahead);
+                    }
+                    MappedObject::Op(op) => {
+                        let len = mapped.0.len();
+                        let mut deque: VecDeque<K> =
+                            query.drain(len..).collect();
+                        swap(typeahead, &mut deque);
+                        return Some(op);
+                    }
                 }
-                Match::NoMatch => {
-                    opping = false;
-                }
-                Match::PartialMatch => {}
+            }
+            Match::PartialMatch => {
+                // Keep searching, but skip this iteration.
+                // Put whatever is left back in the typeahead buffer.
+                move_to_front(&mut query, typeahead);
+            }
+            Match::NoMatch => {
+                // We're done searching this map.
+                // Put whatever is left back in the typeahead buffer.
+                move_to_front(&mut query, typeahead);
             }
         }
-        // Put whatever is left back in the typeahead buffer.
-        move_to_front(&mut query, typeahead);
         None
     }
 
+    /// Insert a mapping from `key` to `value` in the operations map.
+    /// Empty `key`s are not allowed.
     pub fn insert_op(
         &mut self,
         key: Vec<K>,
@@ -177,9 +344,12 @@ where
         if key.is_empty() {
             return Err(OpErr::EmptyKey);
         }
-        return Ok(self.op_map.insert((key, value)));
+        return Ok(self.insert((key, MappedObject::Op(value))));
     }
 
+    /// Insert a mapping from `key` to `value` in the remap map.
+    /// Empty `key`s are not allowed.
+    /// Pairs such that `key` and `value` are equal are not allowed.
     pub fn insert_remap(
         &mut self,
         key: Vec<K>,
@@ -190,7 +360,10 @@ where
         if key.is_empty() {
             return Err(RemapErr::EmptyKey);
         }
-        return Ok(self.key_map.insert((key, value)));
+        if key.cmp(&value) == Equal {
+            return Err(RemapErr::KeyValueEqual);
+        }
+        return Ok(self.insert((key, MappedObject::Seq(value))));
     }
 }
 
@@ -208,40 +381,40 @@ where
     }
 }
 
-#[cfg(test)]
-mod remap {
-    use super::*;
+// #[cfg(test)]
+// mod remap {
+//     use super::*;
 
-    #[test]
-    fn no_match() {
-        let mut map = OrderedVecMap::<Vec<u8>, Vec<u8>>::new();
-        map.insert((vec![2u8, 3u8], vec![6u8]));
-        let mut query = vec![1u8, 2u8, 3u8];
-        let mut typeahead = VecDeque::<u8>::new();
-        assert_eq!(false, remap(&map, &mut query, &mut typeahead));
-        assert!(typeahead.is_empty());
-    }
+//     #[test]
+//     fn no_match() {
+//         let mut map = OrderedVecMap::<Vec<u8>, Vec<u8>>::new();
+//         map.insert((vec![2u8, 3u8], vec![6u8]));
+//         let mut query = vec![1u8, 2u8, 3u8];
+//         let mut typeahead = VecDeque::<u8>::new();
+//         assert_eq!(false, remap(&map, &mut query, &mut typeahead));
+//         assert!(typeahead.is_empty());
+//     }
 
-    #[test]
-    fn partial_match() {
-        let mut map = OrderedVecMap::<Vec<u8>, Vec<u8>>::new();
-        map.insert((vec![1u8, 2u8, 3u8, 4u8], vec![6u8]));
-        let mut query = vec![1u8, 2u8, 3u8];
-        let mut typeahead = VecDeque::<u8>::new();
-        assert_eq!(true, remap(&map, &mut query, &mut typeahead));
-        assert!(typeahead.is_empty());
-    }
+//     #[test]
+//     fn partial_match() {
+//         let mut map = OrderedVecMap::<Vec<u8>, Vec<u8>>::new();
+//         map.insert((vec![1u8, 2u8, 3u8, 4u8], vec![6u8]));
+//         let mut query = vec![1u8, 2u8, 3u8];
+//         let mut typeahead = VecDeque::<u8>::new();
+//         assert_eq!(true, remap(&map, &mut query, &mut typeahead));
+//         assert!(typeahead.is_empty());
+//     }
 
-    #[test]
-    fn full_match() {
-        let mut map = OrderedVecMap::<Vec<u8>, Vec<u8>>::new();
-        map.insert((vec![1u8, 2u8, 3u8], vec![6u8]));
-        let mut query = vec![1u8, 2u8, 3u8];
-        let mut typeahead = VecDeque::<u8>::new();
-        assert_eq!(true, remap(&map, &mut query, &mut typeahead));
-        assert_eq!(VecDeque::from(vec![6u8]), typeahead);
-    }
-}
+//     #[test]
+//     fn full_match() {
+//         let mut map = OrderedVecMap::<Vec<u8>, Vec<u8>>::new();
+//         map.insert((vec![1u8, 2u8, 3u8], vec![6u8]));
+//         let mut query = vec![1u8, 2u8, 3u8];
+//         let mut typeahead = VecDeque::<u8>::new();
+//         assert_eq!(true, remap(&map, &mut query, &mut typeahead));
+//         assert_eq!(VecDeque::from(vec![6u8]), typeahead);
+//     }
+// }
 
 #[cfg(test)]
 mod find_match {
@@ -259,7 +432,10 @@ mod find_match {
         let mut map = OrderedVecMap::<Vec<u8>, u8>::new();
         map.insert((vec![1u8, 2u8, 3u8], 6u8));
         let query = vec![1u8, 2u8, 3u8];
-        assert_eq!(Match::FullMatch(&6u8), find_match(&map, &query))
+        assert_eq!(
+            Match::FullMatch(&(vec![1u8, 2u8, 3u8], 6u8)),
+            find_match(&map, &query)
+        );
     }
 
     #[test]
@@ -269,7 +445,10 @@ mod find_match {
         map.insert((vec![1u8, 2u8], 5u8));
         map.insert((vec![1u8, 2u8, 3u8], 6u8));
         let query = vec![1u8, 2u8, 3u8];
-        assert_eq!(Match::FullMatch(&6u8), find_match(&map, &query))
+        assert_eq!(
+            Match::FullMatch(&(vec![1u8, 2u8, 3u8], 6u8)),
+            find_match(&map, &query)
+        )
     }
 
     #[test]
@@ -297,6 +476,49 @@ mod mode_map {
     enum TestOp {
         ThingOne,
         ThingTwo,
+    }
+
+    #[test]
+    fn insert_overwrite() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8], TestOp::ThingOne)
+        );
+        assert_eq!(
+            Ok(InsertionResult::Overwrite),
+            mode_map.insert_op(vec![1u8], TestOp::ThingTwo)
+        );
+        assert_eq!(
+            Ok(InsertionResult::Overwrite),
+            mode_map.insert_remap(vec![1u8], vec![2u8])
+        );
+        assert_eq!(
+            Ok(InsertionResult::Overwrite),
+            mode_map.insert_remap(vec![1u8], vec![3u8])
+        );
+    }
+
+    #[test]
+    fn insert_empty_key() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Err(OpErr::EmptyKey),
+            mode_map.insert_op(Vec::<u8>::new(), TestOp::ThingOne)
+        );
+        assert_eq!(
+            Err(RemapErr::EmptyKey),
+            mode_map.insert_remap(Vec::<u8>::new(), vec![1u8])
+        );
+    }
+
+    #[test]
+    fn insert_key_value_parity() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Err(RemapErr::KeyValueEqual),
+            mode_map.insert_remap(vec![1u8], vec![1u8])
+        );
     }
 
     #[test]
@@ -331,6 +553,20 @@ mod mode_map {
 
         assert_eq!(Some(TestOp::ThingTwo), mode_map.process(&mut typeahead));
         assert!(typeahead.is_empty());
+    }
+
+    #[test]
+    fn process_overspecified_full_match() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8], TestOp::ThingOne)
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+        typeahead.push_back(1u8);
+        typeahead.push_back(1u8);
+        assert_eq!(Some(TestOp::ThingOne), mode_map.process(&mut typeahead));
     }
 
     #[test]
@@ -410,4 +646,86 @@ mod mode_map {
         assert_eq!(Some(1u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
+
+    #[test]
+    fn process_ambiguous_sequence() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_remap(vec![1u8, 1u8], vec![2u8])
+        );
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8], TestOp::ThingOne)
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+
+        // Ambiguous sequence.
+        typeahead.push_back(1u8);
+        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(1, typeahead.len());
+    }
+
+    #[test]
+    fn process_disambiguated_remap() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_remap(vec![1u8, 1u8], vec![2u8])
+        );
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8], TestOp::ThingOne)
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+
+        // Disambiguate for remap.
+        typeahead.push_back(1u8);
+        typeahead.push_back(1u8);
+        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Some(2u8), typeahead.pop_front());
+        assert_eq!(0, typeahead.len());
+    }
+
+    #[test]
+    fn process_disambiguated_op() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_remap(vec![1u8, 1u8], vec![2u8])
+        );
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8], TestOp::ThingOne)
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+
+        // Disambiguated sequence for op.
+        typeahead.push_back(1u8); // Processing just this will result in None.
+        typeahead.push_back(2u8); // This one disambiguates, so the op can map.
+        assert_eq!(Some(TestOp::ThingOne), mode_map.process(&mut typeahead));
+        assert_eq!(Some(2u8), typeahead.pop_front());
+        assert_eq!(None, typeahead.pop_front());
+    }
+
+    // Test that infinite recursion eventuates in a panic.
+    // #[test]
+    // #[should_panic]
+    // fn process_inf_recursion() {
+    //     let mut mode_map = ModeMap::<u8, TestOp>::new();
+    //     assert_eq!(
+    //         Ok(InsertionResult::Create),
+    //         mode_map.insert_remap(vec![1u8], vec![2u8])
+    //     );
+    //     assert_eq!(
+    //         Ok(InsertionResult::Create),
+    //         mode_map.insert_remap(vec![2u8], vec![1u8])
+    //     );
+    //     let mut typeahead = VecDeque::<u8>::new();
+    //     typeahead.push_back(1u8);
+    //     mode_map.process(&mut typeahead);
+    // }
 }
