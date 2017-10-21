@@ -1,6 +1,7 @@
 use std::cmp::Ord;
 use std::cmp::Ordering;
 use std::convert::From;
+use std::slice::Iter;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum InsertionResult {
@@ -47,21 +48,25 @@ where
         };
     }
 
-    pub fn find(&self, query: &K) -> Option<&T> {
+    pub fn iter(&self) -> Iter<(K, T)> {
+        return self.data.iter();
+    }
+
+    pub fn find(&self, query: &K) -> Option<&(K, T)> {
         match self.data.binary_search_by(|probe| probe.0.cmp(query)) {
-            Ok(idx) => Some(&self.data.get(idx).unwrap().1),
+            Ok(idx) => Some(&self.data.get(idx).unwrap()),
             Err(_) => None,
         }
     }
 
-    pub fn find_by<'a, F>(&self, f: F) -> Option<&T>
+    pub fn find_by<'a, F>(&self, f: F) -> Option<&(K, T)>
     where
         F: Fn(&(K, T)) -> Ordering,
         K: 'a,
         T: 'a,
     {
         match self.data.binary_search_by(f) {
-            Ok(idx) => Some(&self.data.get(idx).unwrap().1),
+            Ok(idx) => Some(&self.data.get(idx).unwrap()),
             Err(_) => None,
         }
     }
@@ -147,14 +152,14 @@ mod tests {
     fn test_find_one() {
         let mut x = OrderedVecMap::<u8, u8>::new();
         x.insert((4u8, 2u8));
-        assert_eq!(Some(&2u8), x.find(&4u8));
+        assert_eq!(Some(&(4u8, 2u8)), x.find(&4u8));
     }
 
     #[test]
     fn test_find_one_by() {
         let mut x = OrderedVecMap::<u8, u8>::new();
         x.insert((4u8, 2u8));
-        assert_eq!(Some(&2u8), x.find_by(|probe| probe.0.cmp(&4u8)));
+        assert_eq!(Some(&(4u8, 2u8)), x.find_by(|probe| probe.0.cmp(&4u8)));
     }
 
     #[test]
@@ -162,7 +167,7 @@ mod tests {
         let mut x = OrderedVecMap::<u8, u8>::new();
         x.insert((4u8, 2u8));
         x.insert((3u8, 3u8));
-        assert_eq!(Some(&2u8), x.find(&4u8));
+        assert_eq!(Some(&(4u8, 2u8)), x.find(&4u8));
     }
 
     #[test]
@@ -170,7 +175,7 @@ mod tests {
         let mut x = OrderedVecMap::<u8, u8>::new();
         x.insert((3u8, 3u8));
         x.insert((4u8, 2u8));
-        assert_eq!(Some(&2u8), x.find_by(|probe| probe.0.cmp(&4u8)));
+        assert_eq!(Some(&(4u8, 2u8)), x.find_by(|probe| probe.0.cmp(&4u8)));
     }
 
     #[test]
@@ -178,6 +183,6 @@ mod tests {
         let v = vec![(1u8, 3u8), (2u8, 2u8), (3u8, 1u8)];
         let x = OrderedVecMap::<u8, u8>::from(v);
         assert_eq!(3, x.len());
-        assert_eq!(Some(&3u8), x.find(&1u8));
+        assert_eq!(Some(&(1u8, 3u8)), x.find(&1u8));
     }
 }

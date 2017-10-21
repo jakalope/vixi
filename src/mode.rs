@@ -46,13 +46,8 @@ impl<'a> NormalMode<'a> {
                     NormalOp::Insert => {
                         return Mode::Insert(InsertMode { state: self.state });
                     }
-                    NormalOp::Append => {
-                        self.state.typeahead.push_back(Key::Right);
-                        return Mode::Insert(InsertMode { state: self.state });
-                    }
-                    NormalOp::AppendAtEnd => {
-                        self.state.typeahead.push_back(Key::End);
-                        return Mode::Insert(InsertMode { state: self.state });
+                    NormalOp::Delete => {
+                        // Enter operator pending mode.
                     }
                 }
             }
