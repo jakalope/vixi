@@ -35,6 +35,8 @@ where
 // TODO Handle noremap (key,value) by surrounding value with non-input-able
 // keys, so if it gets put in the typeahead, it cannot possibly be remapped.
 // This would also mean such values would be ignored by the op-map.
+// TODO No need to use an ordered map anymore, since we can't use a binary
+// search to speed up the general case for disambiguation.
 pub type ModeMap<K, Op> = OrderedVecMap<Vec<K>, MappedObject<K, Op>>;
 
 pub struct State<K>
@@ -262,17 +264,88 @@ where
 //     }
 // }
 
+fn copy_into_deque<K>(v: &[K], d: &mut VecDeque<K>)
+where
+    K: Copy,
+{
+    d.clear();
+    for k in v {
+        d.push_back(*k);
+    }
+}
+
+#[cfg(test)]
+mod copy_into_deque {
+    use super::*;
+
+    #[test]
+    fn simple() {
+        let v = vec![1u8, 2u8, 3u8];
+        let mut d = VecDeque::<u8>::new();
+        copy_into_deque(&v, &mut d);
+        assert_eq!(Some(1u8), d.pop_front());
+        assert_eq!(Some(2u8), d.pop_front());
+        assert_eq!(Some(3u8), d.pop_front());
+        assert_eq!(None, d.pop_front());
+    }
+}
+
 fn remap<K>(
     from: &Vec<K>,
-    mut to: Vec<K>,
+    to: Vec<K>,
     mut query: Vec<K>,
     typeahead: &mut VecDeque<K>,
 ) where
-    K: Clone,
+    K: Copy,
 {
     let len = from.len();
-    let mut deque: VecDeque<K> = query.splice(..len, to.clone()).collect();
-    swap(typeahead, &mut deque);
+    query.splice(..len, to);
+    copy_into_deque(&query, typeahead);
+}
+
+#[cfg(test)]
+mod remap {
+    use super::*;
+
+    #[test]
+    fn simple() {
+        let from = vec![1u8];
+        let to = vec![2u8];
+        let query = vec![1u8, 1u8];
+        let mut typeahead = VecDeque::<u8>::new();
+        remap(&from, to, query, &mut typeahead);
+        assert_eq!(VecDeque::<u8>::from(vec![2u8, 1u8]), typeahead);
+    }
+
+    #[test]
+    fn one_to_two_three() {
+        let from = vec![1u8];
+        let to = vec![2u8, 3u8];
+        let query = vec![1u8];
+        let mut typeahead = VecDeque::<u8>::new();
+        remap(&from, to, query, &mut typeahead);
+        assert_eq!(VecDeque::<u8>::from(vec![2u8, 3u8]), typeahead);
+    }
+
+    #[test]
+    fn one_to_two() {
+        let from = vec![1u8];
+        let to = vec![2u8];
+        let query = vec![1u8];
+        let mut typeahead = VecDeque::<u8>::new();
+        remap(&from, to, query, &mut typeahead);
+        assert_eq!(VecDeque::<u8>::from(vec![2u8]), typeahead);
+    }
+
+    #[test]
+    fn lots_to_nothing() {
+        let from = vec![1u8, 2u8, 3u8, 4u8];
+        let to = vec![];
+        let query = vec![1u8, 2u8, 3u8, 4u8];
+        let mut typeahead = VecDeque::<u8>::new();
+        remap(&from, to, query, &mut typeahead);
+        assert_eq!(VecDeque::<u8>::from(vec![]), typeahead);
+    }
 }
 
 impl<K, Op> ModeMap<K, Op>
@@ -281,52 +354,36 @@ where
     K: Copy,
     Op: Copy,
 {
-    /// Process a typeahead buffer, incrementally adding characters to the
-    /// search query between searches. On each iteration:
-    /// * Search for partial matches in the remap map. If found, exit.
-    /// * Otherwise, search for a full (exact) match in the remap map.
-    /// * If found, clear the query and put the match in front of the typeahead
-    ///   buffer to start the process over.
-    /// * Otherwise, search for partial matches in the operations map. If found,
-    ///   exit.
-    /// * Otherwise, search for a full (exact) match in the operations map.
-    /// * If found, clear the query and exit, returning the found operation.
-    /// * Otherwise, put the query back in front of the typeahead buffer and
-    ///   exit.
+    /// Process a typeahead buffer.
     pub fn process(&self, typeahead: &mut VecDeque<K>) -> Option<Op> {
-        const MAXIMUM_REMAP_RECURSION_LIMIT: u32 = 10000u32;
-
+        // TODO limit query to typeahead.get(..min(longest_key, typeahead.len()))
         let mut query = Vec::<K>::with_capacity(typeahead.len());
-
-        while !typeahead.is_empty() {
-            query.push(typeahead.pop_front().unwrap());
+        for k in typeahead.iter() {
+            query.push(*k);
         }
 
         // Grab keys from the front of the queue, looking for matches.
         match find_match(&self, &query) {
             Match::FullMatch(mapped) => {
+                let len = mapped.0.len();
                 match mapped.1 {
                     MappedObject::Seq(ref remapped) => {
-                        remap(&mapped.0, remapped.clone(), query, typeahead);
+                        typeahead.drain(..len);
+                        for k in remapped.iter() {
+                            typeahead.push_front(*k);
+                        }
                     }
                     MappedObject::Op(op) => {
-                        let len = mapped.0.len();
-                        let mut deque: VecDeque<K> =
-                            query.drain(len..).collect();
-                        swap(typeahead, &mut deque);
+                        typeahead.drain(..len);
                         return Some(op);
                     }
                 }
             }
             Match::PartialMatch => {
                 // Keep searching, but skip this iteration.
-                // Put whatever is left back in the typeahead buffer.
-                move_to_front(&mut query, typeahead);
             }
             Match::NoMatch => {
                 // We're done searching this map.
-                // Put whatever is left back in the typeahead buffer.
-                move_to_front(&mut query, typeahead);
             }
         }
         None
@@ -629,8 +686,9 @@ mod mode_map {
             Ok(InsertionResult::Create),
             mode_map.insert_remap(vec![1u8], vec![2u8])
         );
+        // TODO We need to be able to shadow an op with a remap at some point.
         assert_eq!(
-            Ok(InsertionResult::Create),
+            Ok(InsertionResult::Overwrite),
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
         assert_eq!(
