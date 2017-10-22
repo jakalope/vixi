@@ -1,6 +1,7 @@
 use state::State;
 use termion::event::Key;
 use op::{NormalOp, InsertOp};
+use mode_map::MapErr;
 
 pub struct NormalMode<'a> {
     state: &'a mut State<Key>,
@@ -37,11 +38,15 @@ impl<'a> NormalMode<'a> {
         match self.state.normal_mode_map.process(
             &mut self.state.typeahead,
         ) {
-            None => {
+            Err(MapErr::NoMatch) => {
                 // In Normal mode, unmatched typeahead gets dropped.
                 self.state.typeahead.clear();
             } 
-            Some(op) => {
+            Err(MapErr::InfiniteRecursion) => {
+                // TODO Tell the user they've created an infinite remap loop.
+                self.state.typeahead.clear();
+            } 
+            Ok(op) => {
                 match op {
                     NormalOp::Insert => {
                         return Mode::Insert(InsertMode { state: self.state });
@@ -62,11 +67,15 @@ impl<'a> InsertMode<'a> {
         match self.state.insert_mode_map.process(
             &mut self.state.typeahead,
         ) {
-            None => {
-                // In Insert mode, unmatched typeahead gets passed to the editor.
+            Err(MapErr::NoMatch) => {
+                // In Normal mode, unmatched typeahead gets dropped.
                 self.state.typeahead.clear();
             } 
-            Some(op) => {
+            Err(MapErr::InfiniteRecursion) => {
+                // TODO Tell the user they've created an infinite remap loop.
+                self.state.typeahead.clear();
+            } 
+            Ok(op) => {
                 match op {
                     InsertOp::Cancel => {
                         return Mode::Normal(NormalMode { state: self.state });

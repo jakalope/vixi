@@ -1,10 +1,7 @@
 use std::collections::VecDeque;
 use ordered_vec_map::InsertionResult;
 use disambiguation_map::{DisambiguationMap, Match};
-use termion::event::{Key, parse_event};
-use op::{NormalOp, InsertOp};
-use std::cmp::{min, max};
-use std::cmp::Ordering;
+use std::cmp::min;
 
 /// By convention:
 /// * K is a map's key type, implementing `Copy` and `Ord`.
@@ -21,6 +18,11 @@ where
     op_map: DisambiguationMap<K, Op>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum MapErr {
+    NoMatch, // No matching op mapping was found.
+    InfiniteRecursion, // An infinite loop due to remapping is suspected.
+}
 
 impl<K, Op> ModeMap<K, Op>
 where
@@ -36,18 +38,18 @@ where
     }
 
     /// Process a typeahead buffer.
-    pub fn process(&self, mut typeahead: &mut VecDeque<K>) -> Option<Op> {
+    pub fn process(&self, typeahead: &mut VecDeque<K>) -> Result<Op, MapErr> {
         // Grab keys from the front of the queue, looking for matches.
-        let mut i: usize = 0;
-        const MAX_REMAP_ITERATIONS: usize = 1000;
+        let mut i: i32 = 0;
+        const MAX_REMAP_ITERATIONS: i32 = 1000;
         while typeahead.len() > 0 {
             if i > MAX_REMAP_ITERATIONS {
-                panic!("Infinite loop suspected.");
+                return Err(MapErr::InfiniteRecursion);
             }
             i += 1;
 
-            let remap_result = self.remap_map.process(&mut typeahead);
-            let op_result = self.op_map.process(&mut typeahead);
+            let remap_result = self.remap_map.process(&typeahead);
+            let op_result = self.op_map.process(&typeahead);
 
             match (remap_result, op_result) {
                 (Match::PartialMatch, _) |
@@ -66,14 +68,14 @@ where
                     // If no remapping, try op-mapping.
                     let len = min(mapped.0.len(), typeahead.len());
                     typeahead.drain(..len);
-                    return Some(mapped.1);
+                    return Ok(mapped.1);
                 }
                 (Match::NoMatch, Match::NoMatch) => {
                     break; // No matches found.
                 }
             }
         }
-        return None;
+        return Err(MapErr::NoMatch);
     }
 
     /// Insert a mapping from `key` to `value` in the operations map.
@@ -166,7 +168,7 @@ mod test {
         let mut typeahead = VecDeque::<u8>::new();
         typeahead.push_back(1u8);
 
-        assert_eq!(Some(TestOp::ThingOne), mode_map.process(&mut typeahead));
+        assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
         assert!(typeahead.is_empty());
     }
 
@@ -185,7 +187,7 @@ mod test {
         let mut typeahead = VecDeque::<u8>::new();
         typeahead.push_back(2u8);
 
-        assert_eq!(Some(TestOp::ThingTwo), mode_map.process(&mut typeahead));
+        assert_eq!(Ok(TestOp::ThingTwo), mode_map.process(&mut typeahead));
         assert!(typeahead.is_empty());
     }
 
@@ -200,7 +202,7 @@ mod test {
         let mut typeahead = VecDeque::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
-        assert_eq!(Some(TestOp::ThingOne), mode_map.process(&mut typeahead));
+        assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
     }
 
     #[test]
@@ -215,7 +217,7 @@ mod test {
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
-        assert_eq!(Some(TestOp::ThingOne), mode_map.process(&mut typeahead));
+        assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
         assert_eq!(Some(1u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
@@ -232,7 +234,7 @@ mod test {
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
-        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
         assert_eq!(Some(2u8), typeahead.pop_front());
         assert_eq!(Some(1u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
@@ -250,7 +252,7 @@ mod test {
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
-        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
         assert_eq!(Some(1u8), typeahead.pop_front());
         assert_eq!(Some(1u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
@@ -276,7 +278,7 @@ mod test {
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
-        assert_eq!(Some(TestOp::ThingTwo), mode_map.process(&mut typeahead));
+        assert_eq!(Ok(TestOp::ThingTwo), mode_map.process(&mut typeahead));
         assert_eq!(Some(1u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
@@ -301,7 +303,7 @@ mod test {
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
-        assert_eq!(Some(TestOp::ThingTwo), mode_map.process(&mut typeahead));
+        assert_eq!(Ok(TestOp::ThingTwo), mode_map.process(&mut typeahead));
         assert_eq!(None, typeahead.pop_front());
     }
 
@@ -323,7 +325,7 @@ mod test {
 
         // In this test, we expect the remap not to take place since we haven't
         // yet disambiguated it from the op.
-        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
         assert_eq!(Some(1u8), typeahead.pop_front());
         assert_eq!(Some(1u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
@@ -345,7 +347,7 @@ mod test {
 
         // Ambiguous sequence.
         typeahead.push_back(1u8);
-        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
         assert_eq!(1, typeahead.len());
     }
 
@@ -366,7 +368,7 @@ mod test {
         // Disambiguate for remap.
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
-        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
         assert_eq!(Some(2u8), typeahead.pop_front());
         assert_eq!(0, typeahead.len());
     }
@@ -388,7 +390,7 @@ mod test {
         // Disambiguated sequence for op.
         typeahead.push_back(1u8); // Processing just this will result in None.
         typeahead.push_back(2u8); // This one disambiguates, so the op can map.
-        assert_eq!(Some(TestOp::ThingOne), mode_map.process(&mut typeahead));
+        assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
         assert_eq!(Some(2u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
@@ -404,18 +406,15 @@ mod test {
         let mut typeahead = VecDeque::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(2u8);
-        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
         assert_eq!(Some(3u8), typeahead.pop_front());
         assert_eq!(Some(4u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
-    // Test that infinite recursion eventuates in a panic.
-    // TODO Instead of panic, consider returning a special InfRecursion op
-    // so we can tell the user.
     #[test]
-    #[should_panic]
     fn process_inf_recursion() {
+        // Test that infinite recursion eventually errors out.
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
             InsertionResult::Create,
@@ -427,6 +426,9 @@ mod test {
         );
         let mut typeahead = VecDeque::<u8>::new();
         typeahead.push_back(1u8);
-        mode_map.process(&mut typeahead);
+        assert_eq!(
+            Err(MapErr::InfiniteRecursion),
+            mode_map.process(&mut typeahead)
+        );
     }
 }

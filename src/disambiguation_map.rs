@@ -139,7 +139,7 @@ where
         return result;
     }
 
-    fn fill_query(&self, typeahead: &mut VecDeque<K>) -> Vec<K> {
+    fn fill_query(&self, typeahead: &VecDeque<K>) -> Vec<K> {
         // Optimization:
         // Limit query length to no more than longer than longest key.
         let capacity = min(typeahead.len(), self.max_key_len + 1);
@@ -153,7 +153,7 @@ where
         query
     }
 
-    pub fn process(&self, typeahead: &mut VecDeque<K>) -> Match<&(Vec<K>, T)> {
+    pub fn process(&self, typeahead: &VecDeque<K>) -> Match<&(Vec<K>, T)> {
         let query = self.fill_query(typeahead);
         find_match(&self.vec_map, &query)
     }
