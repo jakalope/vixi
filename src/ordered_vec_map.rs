@@ -109,7 +109,7 @@ where
 }
 
 #[cfg(test)]
-mod ordered_vec_map {
+mod test {
     use super::*;
 
     #[test]

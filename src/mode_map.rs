@@ -126,7 +126,7 @@ where
 
 
 #[cfg(test)]
-mod mode_map {
+mod test {
     use super::*;
 
     #[derive(Copy, Clone, Debug, PartialEq)]
