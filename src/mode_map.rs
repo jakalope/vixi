@@ -6,7 +6,7 @@
 use disambiguation_map::{DisambiguationMap, Match};
 use ordered_vec_map::InsertionResult;
 use std::cmp::min;
-use std::collections::VecDeque;
+use typeahead::Typeahead;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MapErr {
@@ -38,7 +38,7 @@ where
     }
 
     /// Process a typeahead buffer.
-    pub fn process(&self, typeahead: &mut VecDeque<K>) -> Result<Op, MapErr> {
+    pub fn process(&self, typeahead: &mut Typeahead<K>) -> Result<Op, MapErr> {
         // Grab keys from the front of the queue, looking for matches.
         let mut i: i32 = 0;
         const MAX_REMAP_ITERATIONS: i32 = 1000;
@@ -48,8 +48,8 @@ where
             }
             i += 1;
 
-            let remap_result = self.remap_map.process(&typeahead);
-            let op_result = self.op_map.process(&typeahead);
+            let remap_result = self.remap_map.process(typeahead);
+            let op_result = self.op_map.process(typeahead);
 
             match (remap_result, op_result) {
                 (Match::PartialMatch, _) |
@@ -60,9 +60,7 @@ where
                     // Remapping takes precedence over op-mapping.
                     let len = min(mapped.0.len(), typeahead.len());
                     typeahead.drain(..len);
-                    for k in mapped.1.iter().rev() {
-                        typeahead.push_front(*k);
-                    }
+                    typeahead.put_front(&mapped.1);
                 }
                 (Match::NoMatch, Match::FullMatch(mapped)) => {
                     // If no remapping, try op-mapping.
@@ -165,7 +163,7 @@ mod test {
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
 
         assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
@@ -184,7 +182,7 @@ mod test {
             mode_map.insert_op(vec![2u8], TestOp::ThingTwo)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(2u8);
 
         assert_eq!(Ok(TestOp::ThingTwo), mode_map.process(&mut typeahead));
@@ -199,7 +197,7 @@ mod test {
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
         assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
@@ -213,7 +211,7 @@ mod test {
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
@@ -230,7 +228,7 @@ mod test {
             mode_map.insert_remap(vec![1u8], vec![2u8])
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
@@ -248,7 +246,7 @@ mod test {
             mode_map.insert_remap(vec![1u8, 1u8, 1u8], vec![2u8])
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
@@ -274,7 +272,7 @@ mod test {
             mode_map.insert_op(vec![2u8], TestOp::ThingTwo)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
@@ -299,7 +297,7 @@ mod test {
             mode_map.insert_op(vec![2u8], TestOp::ThingTwo)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
@@ -319,7 +317,7 @@ mod test {
             mode_map.insert_op(vec![1u8, 1u8, 1u8], TestOp::ThingOne)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(1u8);
 
@@ -343,7 +341,7 @@ mod test {
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
 
         // Ambiguous sequence.
         typeahead.push_back(1u8);
@@ -363,7 +361,7 @@ mod test {
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
 
         // Disambiguate for remap.
         typeahead.push_back(1u8);
@@ -385,7 +383,7 @@ mod test {
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
 
         // Disambiguated sequence for op.
         typeahead.push_back(1u8); // Processing just this will result in None.
@@ -403,7 +401,7 @@ mod test {
             mode_map.insert_remap(vec![1u8, 2u8], vec![3u8, 4u8])
         );
 
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
         typeahead.push_back(2u8);
         assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
@@ -424,7 +422,7 @@ mod test {
             InsertionResult::Create,
             mode_map.insert_remap(vec![2u8], vec![1u8])
         );
-        let mut typeahead = VecDeque::<u8>::new();
+        let mut typeahead = Typeahead::<u8>::new();
         typeahead.push_back(1u8);
         assert_eq!(
             Err(MapErr::InfiniteRecursion),

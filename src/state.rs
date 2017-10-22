@@ -1,6 +1,6 @@
 use mode_map::ModeMap;
 use op::{NormalOp, InsertOp};
-use std::collections::VecDeque;
+use typeahead::Typeahead;
 use termion::event::Key;
 
 fn str_to_keyvec(s: &str) -> Vec<Key> {
@@ -23,7 +23,7 @@ where
     K: Ord,
     K: Copy,
 {
-    pub typeahead: VecDeque<K>,
+    pub typeahead: Typeahead<K>,
     pub normal_mode_map: ModeMap<K, NormalOp>,
     pub insert_mode_map: ModeMap<K, InsertOp>,
 }
@@ -35,7 +35,7 @@ where
 {
     pub fn new() -> Self {
         State {
-            typeahead: VecDeque::<K>::new(),
+            typeahead: Typeahead::<K>::new(),
             normal_mode_map: ModeMap::<K, NormalOp>::new(),
             insert_mode_map: ModeMap::<K, InsertOp>::new(),
         }

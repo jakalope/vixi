@@ -1,6 +1,6 @@
 use ordered_vec_map::{InsertionResult, OrderedVecMap, RemovalResult};
 use std::cmp::{min, max, Ord, Ordering};
-use std::collections::VecDeque;
+use typeahead::Typeahead;
 
 // TODO Handle noremap (key,value) by surrounding value with non-input-able
 // keys, so if it gets put in the typeahead, it cannot possibly be remapped.
@@ -137,7 +137,7 @@ where
         result
     }
 
-    fn fill_query(&self, typeahead: &VecDeque<K>) -> Vec<K> {
+    fn fill_query(&self, typeahead: &Typeahead<K>) -> Vec<K> {
         // Optimization:
         // Limit query length to no more than longer than longest key.
         let capacity = min(typeahead.len(), self.max_key_len + 1);
@@ -151,7 +151,7 @@ where
         query
     }
 
-    pub fn process(&self, typeahead: &VecDeque<K>) -> Match<&(Vec<K>, T)> {
+    pub fn process(&self, typeahead: &Typeahead<K>) -> Match<&(Vec<K>, T)> {
         let query = self.fill_query(typeahead);
         find_match(&self.vec_map, &query)
     }

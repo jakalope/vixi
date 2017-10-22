@@ -1,3 +1,4 @@
+#![feature(collections_range)]
 extern crate termion;
 
 mod disambiguation_map;
@@ -6,6 +7,7 @@ mod mode_map;
 mod op;
 mod ordered_vec_map;
 mod state;
+mod typeahead;
 
 fn main() {
     let mut state = state::State::new();
