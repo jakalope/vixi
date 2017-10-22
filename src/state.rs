@@ -23,29 +23,30 @@ pub enum RemapErr {
     KeyValueEqual,
 }
 
-#[derive(Ord, PartialOrd, Eq, Clone, Debug, PartialEq)]
-pub enum MappedObject<K, Op>
-where
-    K: Ord,
-    K: Copy,
-{
-    Seq(Vec<K>),
-    Op(Op),
-}
-
 // TODO Handle noremap (key,value) by surrounding value with non-input-able
 // keys, so if it gets put in the typeahead, it cannot possibly be remapped.
 // This would also mean such values would be ignored by the op-map.
+pub struct DisambiguationMap<K, T>
+where
+    K: Ord,
+    K: Copy,
+    T: Clone,
+{
+    // Use an ordered map in order to trade insertion speed for lookup speed.
+    vec_map: OrderedVecMap<Vec<K>, T>,
+    max_key_len: usize,
+}
+
 pub struct ModeMap<K, Op>
 where
     K: Ord,
     K: Copy,
     Op: Copy,
 {
-    // Use an ordered map in order to trade insertion speed for lookup speed.
-    vec_map: OrderedVecMap<Vec<K>, MappedObject<K, Op>>,
-    max_key_len: usize,
+    remap_map: DisambiguationMap<K, Vec<K>>,
+    op_map: DisambiguationMap<K, Op>,
 }
+
 
 pub struct State<K>
 where
@@ -266,14 +267,14 @@ mod find_match {
     }
 }
 
-impl<K, Op> ModeMap<K, Op>
+impl<K, T> DisambiguationMap<K, T>
 where
     K: Ord,
     K: Copy,
-    Op: Copy,
+    T: Clone,
 {
     pub fn new() -> Self {
-        ModeMap {
+        DisambiguationMap {
             vec_map: OrderedVecMap::new(),
             max_key_len: 0,
         }
@@ -285,10 +286,7 @@ where
         }
     }
 
-    fn insert(
-        &mut self,
-        datum: (Vec<K>, MappedObject<K, Op>),
-    ) -> InsertionResult {
+    pub fn insert(&mut self, datum: (Vec<K>, T)) -> InsertionResult {
         let key_len = datum.0.len();
         let result = self.vec_map.insert(datum);
         match result {
@@ -321,45 +319,69 @@ where
         query
     }
 
-    /// Process a typeahead buffer.
-    pub fn process(&self, typeahead: &mut VecDeque<K>) -> Option<Op> {
-        // Grab keys from the front of the queue, looking for matches.
+    pub fn process(&self, typeahead: &mut VecDeque<K>) -> Match<&(Vec<K>, T)> {
+        let query = self.fill_query(typeahead);
+        find_match(&self.vec_map, &query)
+    }
+}
 
+impl<K, Op> ModeMap<K, Op>
+where
+    K: Ord,
+    K: Copy,
+    Op: Copy,
+{
+    pub fn new() -> Self {
+        ModeMap {
+            remap_map: DisambiguationMap::new(),
+            op_map: DisambiguationMap::new(),
+        }
+    }
+
+    /// Process a typeahead buffer.
+    pub fn process(&self, mut typeahead: &mut VecDeque<K>) -> Option<Op> {
+        // Grab keys from the front of the queue, looking for matches.
         let mut i: usize = 0;
-        const MAX_ITERATIONS: usize = 1000;
+        const MAX_REMAP_ITERATIONS: usize = 1000;
         while typeahead.len() > 0 {
-            if i > MAX_ITERATIONS {
+            if i > MAX_REMAP_ITERATIONS {
                 panic!("Infinite loop suspected.");
             }
             i += 1;
 
-            let query = self.fill_query(typeahead);
-            match find_match(&self.vec_map, &query) {
+            match self.remap_map.process(&mut typeahead) {
                 Match::FullMatch(mapped) => {
                     let len = min(mapped.0.len(), typeahead.len());
                     typeahead.drain(..len);
-                    match mapped.1 {
-                        MappedObject::Seq(ref remapped) => {
-                            for k in remapped.iter() {
-                                typeahead.push_front(*k);
-                            }
-                        }
-                        MappedObject::Op(op) => {
-                            return Some(op);
-                        }
+                    for k in mapped.1.iter() {
+                        typeahead.push_front(*k);
                     }
                 }
                 Match::PartialMatch => {
-                    // Keep searching, but skip this iteration.
+                    // No remapping or op mapping can occur yet.
                     return None;
                 }
                 Match::NoMatch => {
-                    // We're done searching this map.
-                    return None;
+                    // Start searching Op map.
+                    break;
                 }
             }
         }
-        return None;
+        match self.op_map.process(&mut typeahead) {
+            Match::FullMatch(mapped) => {
+                let len = min(mapped.0.len(), typeahead.len());
+                typeahead.drain(..len);
+                return Some(mapped.1);
+            }
+            Match::PartialMatch => {
+                // No op mapping can occur yet.
+                return None;
+            }
+            Match::NoMatch => {
+                // We're done searching.
+                return None;
+            }
+        }
     }
 
     /// Insert a mapping from `key` to `value` in the operations map.
@@ -374,7 +396,7 @@ where
         if key.is_empty() {
             return Err(OpErr::EmptyKey);
         }
-        return Ok(self.insert((key, MappedObject::Op(value))));
+        return Ok(self.op_map.insert((key, value)));
     }
 
     /// Insert a mapping from `key` to `value` in the remap map.
@@ -393,7 +415,7 @@ where
         if key.cmp(&value) == Equal {
             return Err(RemapErr::KeyValueEqual);
         }
-        return Ok(self.insert((key, MappedObject::Seq(value))));
+        return Ok(self.remap_map.insert((key, value)));
     }
 }
 
@@ -433,7 +455,7 @@ mod mode_map {
             mode_map.insert_op(vec![1u8], TestOp::ThingTwo)
         );
         assert_eq!(
-            Ok(InsertionResult::Overwrite),
+            Ok(InsertionResult::Create),
             mode_map.insert_remap(vec![1u8], vec![2u8])
         );
         assert_eq!(
@@ -565,17 +587,15 @@ mod mode_map {
         assert_eq!(None, typeahead.pop_front());
     }
 
-    // Disabled for now.
-    //#[test]
+    #[test]
     fn process_shadow_op_with_remap() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
             Ok(InsertionResult::Create),
             mode_map.insert_remap(vec![1u8], vec![2u8])
         );
-        // TODO We need to be able to shadow an op with a remap at some point.
         assert_eq!(
-            Ok(InsertionResult::Overwrite),
+            Ok(InsertionResult::Create),
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
         assert_eq!(
