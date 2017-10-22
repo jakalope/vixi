@@ -60,14 +60,16 @@ where
     let initial: Vec<K>;
     match query.get(0) {
         Some(val) => {
+            // Create a vector containing just the first query element.
             initial = vec![*val];
         }
         None => {
+            // Query is empty.
             return Match::NoMatch;
         }
     };
 
-    // Start at the first potential match.
+    // Start at the first potential match, where keys start with `initial`.
     let mut index = {
         match map.find_idx(&initial) {
             Ok(idx) => idx,
@@ -124,7 +126,7 @@ where
             InsertionResult::Overwrite => {}
             InsertionResult::InvalidKey => {}
         }
-        return result;
+        result
     }
 
     pub fn remove(&mut self, key: &Vec<K>) -> RemovalResult {
@@ -132,7 +134,7 @@ where
         for kv in self.vec_map.iter() {
             self.max_key_len = max(self.max_key_len, kv.0.len());
         }
-        return result;
+        result
     }
 
     fn fill_query(&self, typeahead: &VecDeque<K>) -> Vec<K> {
