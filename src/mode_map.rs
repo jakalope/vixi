@@ -7,6 +7,7 @@ use disambiguation_map::{DisambiguationMap, Match};
 use ordered_vec_map::InsertionResult;
 use std::cmp::min;
 use typeahead::Typeahead;
+use std::ops::Range;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MapErr {
@@ -59,13 +60,13 @@ where
                 (Match::FullMatch(mapped), _) => {
                     // Remapping takes precedence over op-mapping.
                     let len = min(mapped.0.len(), typeahead.len());
-                    typeahead.drain(..len);
+                    typeahead.drain(Range { start: 0, end: len });
                     typeahead.put_front(&mapped.1);
                 }
                 (Match::NoMatch, Match::FullMatch(mapped)) => {
                     // If no remapping, try op-mapping.
                     let len = min(mapped.0.len(), typeahead.len());
-                    typeahead.drain(..len);
+                    typeahead.drain(Range { start: 0, end: len });
                     return Ok(mapped.1);
                 }
                 (Match::NoMatch, Match::NoMatch) => {

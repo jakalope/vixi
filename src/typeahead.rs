@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::collections::vec_deque::{Drain, Iter};
-use std::collections::range::RangeArgument;
+use std::ops::Range;
 
 pub enum RemapType {
     Remap,
@@ -60,10 +60,7 @@ where
         }
     }
 
-    pub fn drain<R>(&mut self, range: R) -> Drain<K>
-    where
-        R: RangeArgument<usize>,
-    {
+    pub fn drain(&mut self, range: Range<usize>) -> Drain<K> {
         self.buffer.drain(range)
     }
 }

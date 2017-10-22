@@ -1,4 +1,3 @@
-#![feature(collections_range)]
 extern crate termion;
 
 mod disambiguation_map;
