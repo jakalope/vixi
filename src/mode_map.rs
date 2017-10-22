@@ -1,12 +1,18 @@
-use std::collections::VecDeque;
-use ordered_vec_map::InsertionResult;
-use disambiguation_map::{DisambiguationMap, Match};
-use std::cmp::min;
-
 /// By convention:
 /// * K is a map's key type, implementing `Copy` and `Ord`.
 /// * T is an arbitrary type, typically stored as a value in a map.
 /// * Op is an arbitrary operation type (typically a mode-specific enum).
+
+use disambiguation_map::{DisambiguationMap, Match};
+use ordered_vec_map::InsertionResult;
+use std::cmp::min;
+use std::collections::VecDeque;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum MapErr {
+    NoMatch, // No matching op mapping was found.
+    InfiniteRecursion, // An infinite loop due to remapping is suspected.
+}
 
 pub struct ModeMap<K, Op>
 where
@@ -16,12 +22,6 @@ where
 {
     remap_map: DisambiguationMap<K, Vec<K>>,
     op_map: DisambiguationMap<K, Op>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum MapErr {
-    NoMatch, // No matching op mapping was found.
-    InfiniteRecursion, // An infinite loop due to remapping is suspected.
 }
 
 impl<K, Op> ModeMap<K, Op>

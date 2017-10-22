@@ -1,7 +1,5 @@
 use ordered_vec_map::{InsertionResult, OrderedVecMap, RemovalResult};
-use std::cmp::{min, max};
-use std::cmp::Ord;
-use std::cmp::Ordering;
+use std::cmp::{min, max, Ord, Ordering};
 use std::collections::VecDeque;
 
 // TODO Handle noremap (key,value) by surrounding value with non-input-able
@@ -41,6 +39,15 @@ where
 }
 
 /// Matches a sequence `Vec<K>` using Vi's mapping rules.
+/// ```
+/// //  Summary:
+/// //    MatchLen < QueryLen <  KeyLen   =>  Not a match
+/// //    MatchLen <  KeyLen  < QueryLen  =>  Not a match
+/// //    MatchLen <  KeyLen  = QueryLen  =>  Not a match
+/// //    MatchLen = QueryLen <  KeyLen   =>  Partial |
+/// //    MatchLen =  KeyLen  < QueryLen  =>  Full    |- MatchLen >=
+/// //    MatchLen =  KeyLen  = QueryLen  =>  Full    |  min(QueryLen, KeyLen)
+/// ```
 fn find_match<'a, K, T>(
     map: &'a OrderedVecMap<Vec<K>, T>,
     query: &Vec<K>,
@@ -49,13 +56,6 @@ where
     K: Ord,
     K: Copy,
 {
-    //  Summary:
-    //    MatchLen < QueryLen <  KeyLen   =>  Not a match
-    //    MatchLen <  KeyLen  < QueryLen  =>  Not a match
-    //    MatchLen <  KeyLen  = QueryLen  =>  Not a match
-    //    MatchLen = QueryLen <  KeyLen   =>  Partial |
-    //    MatchLen =  KeyLen  < QueryLen  =>  Full    |- MatchLen >=
-    //    MatchLen =  KeyLen  = QueryLen  =>  Full    |  min(QueryLen, KeyLen)
     let query_len = query.len();
     let initial: Vec<K>;
     match query.get(0) {
@@ -114,12 +114,6 @@ where
         }
     }
 
-    fn compute_max_key_len(&mut self) {
-        for kv in self.vec_map.iter() {
-            self.max_key_len = max(self.max_key_len, kv.0.len());
-        }
-    }
-
     pub fn insert(&mut self, datum: (Vec<K>, T)) -> InsertionResult {
         let key_len = datum.0.len();
         let result = self.vec_map.insert(datum);
@@ -135,7 +129,9 @@ where
 
     pub fn remove(&mut self, key: &Vec<K>) -> RemovalResult {
         let result = self.vec_map.remove(key);
-        self.compute_max_key_len();
+        for kv in self.vec_map.iter() {
+            self.max_key_len = max(self.max_key_len, kv.0.len());
+        }
         return result;
     }
 
