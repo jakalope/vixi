@@ -58,7 +58,7 @@ where
                     // Remapping takes precedence over op-mapping.
                     let len = min(mapped.0.len(), typeahead.len());
                     typeahead.drain(..len);
-                    for k in mapped.1.iter() {
+                    for k in mapped.1.iter().rev() {
                         typeahead.push_front(*k);
                     }
                 }
@@ -79,28 +79,25 @@ where
     /// Insert a mapping from `key` to `value` in the operations map.
     /// Empty `key`s are not allowed.
     pub fn insert_op(&mut self, key: Vec<K>, value: Op) -> InsertionResult {
-        // Disallow empty keys, as they would full-match against an empty
-        // typeahead buffer.
         if key.is_empty() {
-            return InsertionResult::InvalidKey;
+            InsertionResult::InvalidKey
+        } else {
+            self.op_map.insert((key, value))
         }
-        return self.op_map.insert((key, value));
     }
 
     /// Insert a mapping from `key` to `value` in the remap map.
-    /// Empty `key`s are not allowed.
-    /// Pairs such that `key` and `value` are equal are not allowed.
+    /// Empty `key`s are not allowed and `key` must not equal `value`.
     pub fn insert_remap(
         &mut self,
         key: Vec<K>,
         value: Vec<K>,
     ) -> InsertionResult {
-        // Disallow empty keys, as they would full-match against an empty
-        // typeahead buffer.
         if key.is_empty() || key == value {
-            return InsertionResult::InvalidKey;
+            InsertionResult::InvalidKey
+        } else {
+            self.remap_map.insert((key, value))
         }
-        return self.remap_map.insert((key, value));
     }
 }
 
@@ -393,6 +390,23 @@ mod test {
         typeahead.push_back(2u8); // This one disambiguates, so the op can map.
         assert_eq!(Some(TestOp::ThingOne), mode_map.process(&mut typeahead));
         assert_eq!(Some(2u8), typeahead.pop_front());
+        assert_eq!(None, typeahead.pop_front());
+    }
+
+    #[test]
+    fn process_push_front_reversed() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            InsertionResult::Create,
+            mode_map.insert_remap(vec![1u8, 2u8], vec![3u8, 4u8])
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+        typeahead.push_back(1u8);
+        typeahead.push_back(2u8);
+        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Some(3u8), typeahead.pop_front());
+        assert_eq!(Some(4u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
