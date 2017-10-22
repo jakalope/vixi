@@ -57,39 +57,36 @@ where
             }
             i += 1;
 
-            match self.remap_map.process(&mut typeahead) {
-                Match::FullMatch(mapped) => {
+            let remap_result = self.remap_map.process(&mut typeahead);
+            let op_result = self.op_map.process(&mut typeahead);
+
+            match (remap_result, op_result) {
+                (Match::PartialMatch, _) |
+                (_, Match::PartialMatch) => {
+                    // Ambiguous results.
+                    break;
+                }
+                (Match::FullMatch(mapped), _) => {
+                    // Remapping takes precedence over op-mapping.
                     let len = min(mapped.0.len(), typeahead.len());
                     typeahead.drain(..len);
                     for k in mapped.1.iter() {
                         typeahead.push_front(*k);
                     }
                 }
-                Match::PartialMatch => {
-                    // No remapping or op mapping can occur yet.
-                    return None;
+                (Match::NoMatch, Match::FullMatch(mapped)) => {
+                    // If no remapping, try op-mapping.
+                    let len = min(mapped.0.len(), typeahead.len());
+                    typeahead.drain(..len);
+                    return Some(mapped.1);
                 }
-                Match::NoMatch => {
-                    // Start searching Op map.
+                (Match::NoMatch, Match::NoMatch) => {
+                    // No matches found.
                     break;
                 }
             }
         }
-        match self.op_map.process(&mut typeahead) {
-            Match::FullMatch(mapped) => {
-                let len = min(mapped.0.len(), typeahead.len());
-                typeahead.drain(..len);
-                return Some(mapped.1);
-            }
-            Match::PartialMatch => {
-                // No op mapping can occur yet.
-                return None;
-            }
-            Match::NoMatch => {
-                // We're done searching.
-                return None;
-            }
-        }
+        return None;
     }
 
     /// Insert a mapping from `key` to `value` in the operations map.
@@ -328,6 +325,30 @@ mod mode_map {
         typeahead.push_back(1u8);
 
         assert_eq!(Some(TestOp::ThingTwo), mode_map.process(&mut typeahead));
+        assert_eq!(None, typeahead.pop_front());
+    }
+
+    #[test]
+    fn process_op_remap_ambiguate() {
+        let mut mode_map = ModeMap::<u8, TestOp>::new();
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_remap(vec![1u8, 1u8], vec![2u8])
+        );
+        assert_eq!(
+            Ok(InsertionResult::Create),
+            mode_map.insert_op(vec![1u8, 1u8, 1u8], TestOp::ThingOne)
+        );
+
+        let mut typeahead = VecDeque::<u8>::new();
+        typeahead.push_back(1u8);
+        typeahead.push_back(1u8);
+
+        // In this test, we expect the remap not to take place since we haven't
+        // yet disambiguated it from the op.
+        assert_eq!(None, mode_map.process(&mut typeahead));
+        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(Some(1u8), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
