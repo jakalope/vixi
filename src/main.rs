@@ -1,11 +1,11 @@
 extern crate termion;
 
-mod common;
+mod disambiguation_map;
 mod mode;
+mod mode_map;
 mod op;
 mod ordered_vec_map;
 mod state;
-mod mode_map;
 
 fn main() {
     let mut state = state::State::new();
