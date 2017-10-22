@@ -36,8 +36,6 @@ where
 // TODO Handle noremap (key,value) by surrounding value with non-input-able
 // keys, so if it gets put in the typeahead, it cannot possibly be remapped.
 // This would also mean such values would be ignored by the op-map.
-// TODO No need to use an ordered map anymore, since we can't use a binary
-// search to speed up the general case for disambiguation.
 pub struct ModeMap<K, Op>
 where
     K: Ord,
