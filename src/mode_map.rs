@@ -10,17 +10,6 @@ use std::cmp::Ordering;
 /// * K is a map's key type, implementing `Copy` and `Ord`.
 /// * T is an arbitrary type, typically stored as a value in a map.
 /// * Op is an arbitrary operation type (typically a mode-specific enum).
-#[derive(Debug, PartialEq)]
-pub enum OpErr {
-    EmptyKey,
-    NotEnoughArgs(usize),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum RemapErr {
-    EmptyKey,
-    KeyValueEqual,
-}
 
 pub struct ModeMap<K, Op>
 where
@@ -89,17 +78,13 @@ where
 
     /// Insert a mapping from `key` to `value` in the operations map.
     /// Empty `key`s are not allowed.
-    pub fn insert_op(
-        &mut self,
-        key: Vec<K>,
-        value: Op,
-    ) -> Result<InsertionResult, OpErr> {
+    pub fn insert_op(&mut self, key: Vec<K>, value: Op) -> InsertionResult {
         // Disallow empty keys, as they would full-match against an empty
         // typeahead buffer.
         if key.is_empty() {
-            return Err(OpErr::EmptyKey);
+            return InsertionResult::InvalidKey;
         }
-        return Ok(self.op_map.insert((key, value)));
+        return self.op_map.insert((key, value));
     }
 
     /// Insert a mapping from `key` to `value` in the remap map.
@@ -109,16 +94,13 @@ where
         &mut self,
         key: Vec<K>,
         value: Vec<K>,
-    ) -> Result<InsertionResult, RemapErr> {
+    ) -> InsertionResult {
         // Disallow empty keys, as they would full-match against an empty
         // typeahead buffer.
-        if key.is_empty() {
-            return Err(RemapErr::EmptyKey);
+        if key.is_empty() || key == value {
+            return InsertionResult::InvalidKey;
         }
-        if key.cmp(&value) == Ordering::Equal {
-            return Err(RemapErr::KeyValueEqual);
-        }
-        return Ok(self.remap_map.insert((key, value)));
+        return self.remap_map.insert((key, value));
     }
 }
 
@@ -137,19 +119,19 @@ mod test {
     fn insert_overwrite() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
         assert_eq!(
-            Ok(InsertionResult::Overwrite),
+            InsertionResult::Overwrite,
             mode_map.insert_op(vec![1u8], TestOp::ThingTwo)
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8], vec![2u8])
         );
         assert_eq!(
-            Ok(InsertionResult::Overwrite),
+            InsertionResult::Overwrite,
             mode_map.insert_remap(vec![1u8], vec![3u8])
         );
     }
@@ -158,11 +140,11 @@ mod test {
     fn insert_empty_key() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Err(OpErr::EmptyKey),
+            InsertionResult::InvalidKey,
             mode_map.insert_op(Vec::<u8>::new(), TestOp::ThingOne)
         );
         assert_eq!(
-            Err(RemapErr::EmptyKey),
+            InsertionResult::InvalidKey,
             mode_map.insert_remap(Vec::<u8>::new(), vec![1u8])
         );
     }
@@ -171,7 +153,7 @@ mod test {
     fn insert_key_value_parity() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Err(RemapErr::KeyValueEqual),
+            InsertionResult::InvalidKey,
             mode_map.insert_remap(vec![1u8], vec![1u8])
         );
     }
@@ -180,7 +162,7 @@ mod test {
     fn process_one_op() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
@@ -195,11 +177,11 @@ mod test {
     fn process_two_ops() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![2u8], TestOp::ThingTwo)
         );
 
@@ -214,7 +196,7 @@ mod test {
     fn process_overspecified_full_match() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
@@ -228,7 +210,7 @@ mod test {
     fn process_put_back_leftovers() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
@@ -245,7 +227,7 @@ mod test {
     fn process_remap() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8], vec![2u8])
         );
 
@@ -263,7 +245,7 @@ mod test {
     fn process_overspecified_remap() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8, 1u8, 1u8], vec![2u8])
         );
 
@@ -281,15 +263,15 @@ mod test {
     fn process_shadow_op_with_remap() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8], vec![2u8])
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![2u8], TestOp::ThingTwo)
         );
 
@@ -306,15 +288,15 @@ mod test {
     fn process_remap_then_op() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8, 1u8], vec![2u8])
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![2u8], TestOp::ThingTwo)
         );
 
@@ -330,11 +312,11 @@ mod test {
     fn process_op_remap_ambiguate() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8, 1u8], vec![2u8])
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8, 1u8, 1u8], TestOp::ThingOne)
         );
 
@@ -354,11 +336,11 @@ mod test {
     fn process_ambiguous_sequence() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8, 1u8], vec![2u8])
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
@@ -374,11 +356,11 @@ mod test {
     fn process_disambiguated_remap() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8, 1u8], vec![2u8])
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
@@ -396,11 +378,11 @@ mod test {
     fn process_disambiguated_op() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8, 1u8], vec![2u8])
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_op(vec![1u8], TestOp::ThingOne)
         );
 
@@ -422,11 +404,11 @@ mod test {
     fn process_inf_recursion() {
         let mut mode_map = ModeMap::<u8, TestOp>::new();
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![1u8], vec![2u8])
         );
         assert_eq!(
-            Ok(InsertionResult::Create),
+            InsertionResult::Create,
             mode_map.insert_remap(vec![2u8], vec![1u8])
         );
         let mut typeahead = VecDeque::<u8>::new();

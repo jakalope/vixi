@@ -128,7 +128,7 @@ where
                 self.max_key_len = max(self.max_key_len, key_len);
             }
             InsertionResult::Overwrite => {}
-
+            InsertionResult::InvalidKey => {}
         }
         return result;
     }

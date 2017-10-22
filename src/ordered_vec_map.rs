@@ -7,6 +7,7 @@ use std::slice::Iter;
 pub enum InsertionResult {
     Create,
     Overwrite,
+    InvalidKey,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
