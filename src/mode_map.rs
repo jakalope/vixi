@@ -63,8 +63,7 @@ where
             match (remap_result, op_result) {
                 (Match::PartialMatch, _) |
                 (_, Match::PartialMatch) => {
-                    // Ambiguous results.
-                    break;
+                    break; // Ambiguous results.
                 }
                 (Match::FullMatch(mapped), _) => {
                     // Remapping takes precedence over op-mapping.
@@ -81,8 +80,7 @@ where
                     return Some(mapped.1);
                 }
                 (Match::NoMatch, Match::NoMatch) => {
-                    // No matches found.
-                    break;
+                    break; // No matches found.
                 }
             }
         }
