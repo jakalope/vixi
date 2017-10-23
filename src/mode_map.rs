@@ -6,7 +6,7 @@
 use disambiguation_map::{DisambiguationMap, Match};
 use ordered_vec_map::InsertionResult;
 use std::cmp::min;
-use typeahead::Typeahead;
+use typeahead::{Typeahead, RemapType};
 use std::ops::Range;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -49,8 +49,10 @@ where
             }
             i += 1;
 
-            let remap_result = self.remap_map.process(typeahead);
-            let op_result = self.op_map.process(typeahead);
+            let remap_result =
+                self.remap_map.process(typeahead, RemapType::Remap);
+            let op_result =
+                self.op_map.process(typeahead, RemapType::NotRelavant);
 
             match (remap_result, op_result) {
                 (Match::PartialMatch, _) |
@@ -61,7 +63,7 @@ where
                     // Remapping takes precedence over op-mapping.
                     let len = min(mapped.0.len(), typeahead.len());
                     typeahead.drain(Range { start: 0, end: len });
-                    typeahead.put_front(&mapped.1);
+                    typeahead.put_front(&mapped.1, RemapType::Remap);
                 }
                 (Match::NoMatch, Match::FullMatch(mapped)) => {
                     // If no remapping, try op-mapping.
@@ -165,7 +167,7 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
 
         assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
         assert!(typeahead.is_empty());
@@ -184,7 +186,7 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(2u8);
+        typeahead.push_back(2u8, RemapType::Remap);
 
         assert_eq!(Ok(TestOp::ThingTwo), mode_map.process(&mut typeahead));
         assert!(typeahead.is_empty());
@@ -199,8 +201,8 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(1u8, RemapType::Remap);
         assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
     }
 
@@ -213,11 +215,11 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(1u8, RemapType::Remap);
 
         assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
-        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(Some((1u8, RemapType::Remap)), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
@@ -230,12 +232,12 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(1u8, RemapType::Remap);
 
         assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
-        assert_eq!(Some(2u8), typeahead.pop_front());
-        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(Some((2u8, RemapType::Remap)), typeahead.pop_front());
+        assert_eq!(Some((1u8, RemapType::Remap)), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
@@ -248,12 +250,12 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(1u8, RemapType::Remap);
 
         assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
-        assert_eq!(Some(1u8), typeahead.pop_front());
-        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(Some((1u8, RemapType::Remap)), typeahead.pop_front());
+        assert_eq!(Some((1u8, RemapType::Remap)), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
@@ -274,11 +276,11 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(1u8, RemapType::Remap);
 
         assert_eq!(Ok(TestOp::ThingTwo), mode_map.process(&mut typeahead));
-        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(Some((1u8, RemapType::Remap)), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
@@ -299,8 +301,8 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(1u8, RemapType::Remap);
 
         assert_eq!(Ok(TestOp::ThingTwo), mode_map.process(&mut typeahead));
         assert_eq!(None, typeahead.pop_front());
@@ -319,14 +321,14 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(1u8, RemapType::Remap);
 
         // In this test, we expect the remap not to take place since we haven't
         // yet disambiguated it from the op.
         assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
-        assert_eq!(Some(1u8), typeahead.pop_front());
-        assert_eq!(Some(1u8), typeahead.pop_front());
+        assert_eq!(Some((1u8, RemapType::Remap)), typeahead.pop_front());
+        assert_eq!(Some((1u8, RemapType::Remap)), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
@@ -345,7 +347,7 @@ mod test {
         let mut typeahead = Typeahead::<u8>::new();
 
         // Ambiguous sequence.
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
         assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
         assert_eq!(1, typeahead.len());
     }
@@ -365,10 +367,10 @@ mod test {
         let mut typeahead = Typeahead::<u8>::new();
 
         // Disambiguate for remap.
-        typeahead.push_back(1u8);
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(1u8, RemapType::Remap);
         assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
-        assert_eq!(Some(2u8), typeahead.pop_front());
+        assert_eq!(Some((2u8, RemapType::Remap)), typeahead.pop_front());
         assert_eq!(0, typeahead.len());
     }
 
@@ -387,10 +389,10 @@ mod test {
         let mut typeahead = Typeahead::<u8>::new();
 
         // Disambiguated sequence for op.
-        typeahead.push_back(1u8); // Processing just this will result in None.
-        typeahead.push_back(2u8); // This one disambiguates, so the op can map.
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(2u8, RemapType::Remap);
         assert_eq!(Ok(TestOp::ThingOne), mode_map.process(&mut typeahead));
-        assert_eq!(Some(2u8), typeahead.pop_front());
+        assert_eq!(Some((2u8, RemapType::Remap)), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
@@ -403,11 +405,11 @@ mod test {
         );
 
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
-        typeahead.push_back(2u8);
+        typeahead.push_back(1u8, RemapType::Remap);
+        typeahead.push_back(2u8, RemapType::Remap);
         assert_eq!(Err(MapErr::NoMatch), mode_map.process(&mut typeahead));
-        assert_eq!(Some(3u8), typeahead.pop_front());
-        assert_eq!(Some(4u8), typeahead.pop_front());
+        assert_eq!(Some((3u8, RemapType::Remap)), typeahead.pop_front());
+        assert_eq!(Some((4u8, RemapType::Remap)), typeahead.pop_front());
         assert_eq!(None, typeahead.pop_front());
     }
 
@@ -424,7 +426,7 @@ mod test {
             mode_map.insert_remap(vec![2u8], vec![1u8])
         );
         let mut typeahead = Typeahead::<u8>::new();
-        typeahead.push_back(1u8);
+        typeahead.push_back(1u8, RemapType::Remap);
         assert_eq!(
             Err(MapErr::InfiniteRecursion),
             mode_map.process(&mut typeahead)
