@@ -5,12 +5,13 @@ use std::ops::Range;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RemapType {
     NotRelavant, // For Op mapping.
-    Remap,
-    Noremap,
-    Script,
-    Abbreviation,
+    Remap, // Recursively mappable keys.
+    Noremap, // Keys that may be modified by mapping only once.
+    Script, // Keys that may only be remapped by script-local mappings.
+    Abbreviation, // Don't remap, apply abbreviations.
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Typeahead<K>
 where
     K: Ord,
@@ -68,6 +69,7 @@ where
         self.buffer.iter()
     }
 
+    /// Provides a `Typeahead` iterator over `K`, omitting the `RemapType`.
     pub fn value_iter(&self) -> TypeaheadValueIterator<K> {
         TypeaheadValueIterator { buffer_iter: self.iter() }
     }
@@ -84,6 +86,7 @@ where
         self.buffer.push_back((value, remap_type));
     }
 
+    /// Appends `value` to the front of the `Typeahead` buffer.
     pub fn put_front(&mut self, value: &Vec<K>, remap_type: RemapType) {
         for k in value.iter().rev() {
             self.push_front(*k, remap_type);

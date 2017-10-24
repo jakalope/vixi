@@ -6,8 +6,8 @@
 use disambiguation_map::{DisambiguationMap, Match};
 use ordered_vec_map::InsertionResult;
 use std::cmp::min;
-use typeahead::{Typeahead, RemapType};
 use std::ops::Range;
+use typeahead::{Typeahead, RemapType};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MapErr {
@@ -15,6 +15,7 @@ pub enum MapErr {
     InfiniteRecursion, // An infinite loop due to remapping is suspected.
 }
 
+#[derive(Debug, PartialEq)]
 pub struct ModeMap<K, Op>
 where
     K: Ord,

@@ -18,6 +18,7 @@ pub enum RemovalResult {
 
 // Provides an ordered map with a method to query for partial matches.
 // This is useful for disambiguation.
+#[derive(Debug, PartialEq)]
 pub struct OrderedVecMap<K, T>
 where
     K: Ord,

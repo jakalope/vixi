@@ -5,6 +5,7 @@ use typeahead::{RemapType, Typeahead};
 // TODO Handle noremap (key,value) by surrounding value with non-input-able
 // keys, so if it gets put in the typeahead, it cannot possibly be remapped.
 // This would also mean such values would be ignored by the op-map.
+#[derive(Debug, PartialEq)]
 pub struct DisambiguationMap<K, T>
 where
     K: Ord,
