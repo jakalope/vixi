@@ -5,13 +5,13 @@ use termion::event::Key;
 use typeahead::RemapType;
 
 #[derive(Debug, PartialEq)]
-pub struct NormalMode<'a> {
-    state: &'a mut State,
+pub struct NormalMode {
+    state: State,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct InsertMode<'a> {
-    state: &'a mut State,
+pub struct InsertMode {
+    state: State,
 }
 
 // Use an enum for modes. This is preferable to a traits approach, since we know
@@ -22,13 +22,13 @@ pub struct InsertMode<'a> {
 // Ultimately, this architecture allows us to limit the methods available to
 // vixi according to her current mode.
 #[derive(Debug, PartialEq)]
-pub enum Mode<'a> {
-    Normal(NormalMode<'a>),
-    Insert(InsertMode<'a>),
+pub enum Mode {
+    Normal(NormalMode),
+    Insert(InsertMode),
 }
 
-impl<'a> Mode<'a> {
-    pub fn new(state: &'a mut State) -> Self {
+impl Mode {
+    pub fn new(state: State) -> Self {
         Mode::Normal(NormalMode { state: state })
     }
 
@@ -40,8 +40,9 @@ impl<'a> Mode<'a> {
         }
     }
 
-    // Manage mode-switching ops.
-    pub fn process(self) -> Mode<'a> {
+    pub fn process(self) -> Mode {
+        // Manage mode-switching ops. A `process()` method blocks here until a
+        // mode switch op is returned.
         match self {
             Mode::Normal(x) => x.process(),
             Mode::Insert(x) => x.process(),
@@ -56,12 +57,12 @@ impl<'a> Mode<'a> {
     }
 }
 
-impl<'a> NormalMode<'a> {
+impl NormalMode {
     pub fn put(&mut self, key: Key, remap_type: RemapType) {
         self.state.put(key, remap_type);
     }
 
-    pub fn process(self) -> Mode<'a> {
+    pub fn process(mut self) -> Mode {
         match self.state.normal_mode_map.process(
             &mut self.state.typeahead,
         ) {
@@ -89,12 +90,12 @@ impl<'a> NormalMode<'a> {
     }
 }
 
-impl<'a> InsertMode<'a> {
+impl InsertMode {
     pub fn put(&mut self, key: Key, remap_type: RemapType) {
         self.state.put(key, remap_type);
     }
 
-    pub fn process(self) -> Mode<'a> {
+    pub fn process(mut self) -> Mode {
         match self.state.insert_mode_map.process(
             &mut self.state.typeahead,
         ) {
@@ -125,21 +126,19 @@ mod test {
 
     #[test]
     fn insert_from_normal() {
-        let mut state = State::new();
-        let mut normal_mode = Mode::new(&mut state);
-        normal_mode.put(Key::Char('i'), RemapType::Remap);
-        let next_mode = normal_mode.process();
-        assert_eq!("Insert", next_mode.name());
+        let mut mode = Mode::new(State::new());
+        mode.put(Key::Char('i'), RemapType::Remap);
+        mode = mode.process();
+        assert_eq!("Insert", mode.name());
     }
 
     #[test]
     fn normal_from_insert() {
-        let mut state = State::new();
-        let mut normal_mode = Mode::new(&mut state);
-        normal_mode.put(Key::Char('i'), RemapType::Remap);
-        let mut insert_mode = normal_mode.process();
-        insert_mode.put(Key::Esc, RemapType::Remap);
-        let next_mode = insert_mode.process();
-        assert_eq!("Normal", next_mode.name());
+        let mut mode = Mode::new(State::new());
+        mode.put(Key::Char('i'), RemapType::Remap);
+        mode = mode.process();
+        mode.put(Key::Esc, RemapType::Remap);
+        mode = mode.process();
+        assert_eq!("Normal", mode.name());
     }
 }
