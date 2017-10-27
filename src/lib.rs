@@ -8,3 +8,4 @@ pub mod op;
 pub mod typeahead;
 pub mod mode;
 pub mod state;
+pub mod vixi;
