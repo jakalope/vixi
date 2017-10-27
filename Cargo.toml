@@ -5,3 +5,4 @@ authors = ["Jake Askeland <jake.askeland@gmail.com>"]
 
 [dependencies]
 termion = { git = "https://github.com/jakalope/termion" }
+xrl = { git = "https://github.com/little-dude/xrl" }

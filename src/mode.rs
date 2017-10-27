@@ -86,8 +86,8 @@ impl Transition for InsertMode {
             &mut state.typeahead,
         ) {
             Err(MapErr::NoMatch) => {
-                // In Normal mode, unmatched typeahead gets dropped.
-                state.typeahead.clear();
+                // In Insert mode, unmatched typeahead gets inserted.
+                // TODO send keystrokes to owner.
             } 
             Err(MapErr::InfiniteRecursion) => {
                 // TODO Tell the user they've created an infinite remap loop.
