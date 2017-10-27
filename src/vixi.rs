@@ -1,4 +1,4 @@
-use mode::{Mode,NormalMode,InsertMode,Transition};
+use mode::{Mode,normal,Transition};
 use state::State;
 use termion::event::Key;
 use typeahead::RemapType;
@@ -12,7 +12,7 @@ impl Vixi {
     pub fn new() -> Self {
         Vixi {
             state: State::new(),
-            mode: Mode::Normal(NormalMode{}),
+            mode: normal(),
         }
     }
 

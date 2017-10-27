@@ -19,6 +19,14 @@ pub enum Mode {
     Insert(InsertMode),
 }
 
+pub fn normal() -> Mode {
+    Mode::Normal(NormalMode{})
+}
+
+pub fn insert() -> Mode {
+    Mode::Insert(InsertMode{})
+}
+
 impl Transition for Mode {
     fn name(&self) -> &'static str {
         match *self {
@@ -55,7 +63,7 @@ impl Transition for NormalMode {
             Ok(op) => {
                 match op {
                     NormalOp::Insert => {
-                        return Mode::Insert(InsertMode{});
+                        return insert();
                     }
                     NormalOp::Delete => {
                         // TODO Enter operator pending mode.
@@ -64,7 +72,7 @@ impl Transition for NormalMode {
             }
         };
         // Stay in normal mode.
-        return Mode::Normal(NormalMode{});
+        normal()
     }
 }
 
@@ -88,12 +96,12 @@ impl Transition for InsertMode {
             Ok(op) => {
                 match op {
                     InsertOp::Cancel => {
-                        return Mode::Normal(NormalMode{});
+                        return normal();
                     }
                 }
             }
         }
         // Stay in insert mode.
-        return Mode::Insert(InsertMode{});
+        insert()
     }
 }
