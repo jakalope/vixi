@@ -1,13 +1,14 @@
 extern crate termion;
+extern crate xrl;
 
-mod insert_mode;
-mod normal_mode;
 mod disambiguation_map;
-mod mode_map;
-mod ordered_vec_map;
-mod typeahead;
-mod op;
+mod insert_mode;
 mod mode;
+mod mode_map;
+mod normal_mode;
+mod op;
+mod ordered_vec_map;
 mod state;
+mod typeahead;
 
 pub mod vixi;
