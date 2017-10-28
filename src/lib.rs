@@ -1,6 +1,3 @@
-extern crate termion;
-extern crate xrl;
-
 mod disambiguation_map;
 mod insert_mode;
 mod mode;
@@ -12,3 +9,7 @@ mod state;
 mod typeahead;
 
 pub mod vixi;
+
+#[cfg(test)]
+extern crate termion;
+

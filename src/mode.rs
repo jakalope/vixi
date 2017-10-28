@@ -1,31 +1,34 @@
+use mode_map::MapErr;
+use op::InsertOp;
+use op::NormalOp;
 use state::State;
-use typeahead::RemapType;
+use std::marker::PhantomData;
 
-pub trait Transition {
+pub trait Transition<K> where K: Ord, K: Copy {
     fn name(&self) -> &'static str;
-    fn transition(&self, state: &mut State) -> Mode;
+    fn transition(&self, state: &mut State<K>) -> Mode<K>;
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct NormalMode { }
+pub struct NormalMode<K> { t: PhantomData<K>  }
 
 #[derive(Clone, Copy, Debug)]
-pub struct InsertMode { }
+pub struct InsertMode<K> { t: PhantomData<K> }
 
-pub enum Mode {
-    Normal(NormalMode),
-    Insert(InsertMode),
+pub enum Mode<K> {
+    Normal(NormalMode<K>),
+    Insert(InsertMode<K>),
 }
 
-pub fn normal() -> Mode {
-    Mode::Normal(NormalMode{})
+pub fn normal<K>() -> Mode<K> {
+    Mode::Normal(NormalMode::<K>{ t: PhantomData::<K>{} })
 }
 
-pub fn insert() -> Mode {
-    Mode::Insert(InsertMode{})
+pub fn insert<K>() -> Mode<K> {
+    Mode::Insert(InsertMode::<K>{ t: PhantomData::<K>{} })
 }
 
-impl Transition for Mode {
+impl<K> Transition<K> for Mode<K> where K: Ord, K: Copy {
     fn name(&self) -> &'static str {
         match *self {
             Mode::Normal(x) => x.name(),
@@ -33,7 +36,7 @@ impl Transition for Mode {
         }
     }
 
-    fn transition(&self, state: &mut State) -> Mode {
+    fn transition(&self, state: &mut State<K>) -> Mode<K> {
         match *self {
             Mode::Normal(x) => x.transition(state),
             Mode::Insert(x) => x.transition(state),

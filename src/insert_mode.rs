@@ -2,14 +2,13 @@ use mode::{insert, normal, InsertMode, Mode, Transition};
 use mode_map::MapErr;
 use op::InsertOp;
 use state::State;
-use typeahead::RemapType;
 
-impl Transition for InsertMode {
+impl<K> Transition<K> for InsertMode<K> where K: Ord, K: Copy {
     fn name(&self) -> &'static str {
         "Insert"
     }
 
-    fn transition(&self, state: &mut State) -> Mode {
+    fn transition(&self, state: &mut State<K>) -> Mode<K> {
         match state.insert_mode_map.process(
             &mut state.typeahead,
         ) {
