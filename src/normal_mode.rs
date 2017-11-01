@@ -3,15 +3,17 @@ use mode_map::MapErr;
 use op::NormalOp;
 use state::State;
 
-impl<K> Transition<K> for NormalMode<K> where K: Ord, K: Copy {
+impl<K> Transition<K> for NormalMode<K>
+where
+    K: Ord,
+    K: Copy,
+{
     fn name(&self) -> &'static str {
         "Normal"
     }
 
     fn transition(&self, state: &mut State<K>) -> Mode<K> {
-        match state.normal_mode_map.process(
-            &mut state.typeahead,
-        ) {
+        match state.normal_mode_map.process(&mut state.typeahead) {
             Err(MapErr::NoMatch) => {
                 // In Normal mode, unmatched typeahead gets dropped.
                 state.typeahead.clear();
@@ -35,4 +37,3 @@ impl<K> Transition<K> for NormalMode<K> where K: Ord, K: Copy {
         normal()
     }
 }
-

@@ -1,15 +1,23 @@
-use mode::{Mode,normal,Transition};
+use mode::{Mode, normal, Transition};
 use mode_map::ModeMap;
 use op::{InsertOp, NormalOp};
 use state::State;
 use typeahead::RemapType;
 
-pub struct Vixi<K> where K: Ord, K: Copy {
+pub struct Vixi<K>
+where
+    K: Ord,
+    K: Copy,
+{
     state: State<K>,
-    mode: Mode<K>,    
+    mode: Mode<K>,
 }
 
-impl<K> Vixi<K> where K: Ord, K: Copy {
+impl<K> Vixi<K>
+where
+    K: Ord,
+    K: Copy,
+{
     pub fn new() -> Self {
         Vixi {
             state: State::<K>::new(),
@@ -17,16 +25,18 @@ impl<K> Vixi<K> where K: Ord, K: Copy {
         }
     }
 
-    pub fn with_maps(normal_map: ModeMap<K, NormalOp>,
-                     insert_map: ModeMap<K, InsertOp>) -> Self {
+    pub fn with_maps(
+        normal_map: ModeMap<K, NormalOp>,
+        insert_map: ModeMap<K, InsertOp>,
+    ) -> Self {
         Vixi {
             state: State::with_maps(normal_map, insert_map),
             mode: normal(),
         }
     }
 
-    pub fn process(&mut self, key: K, remap_type: RemapType) {
-        self.state.put(key, remap_type);
+    pub fn process(&mut self, key: K) {
+        self.state.put(key, RemapType::Remap);
         self.mode = self.mode.transition(&mut self.state);
     }
 
@@ -66,23 +76,29 @@ mod test {
 
     #[test]
     fn start_in_normal() {
-        let vixi = Vixi::<Key>::with_maps(make_normal_mode_map(),
-                                   make_insert_mode_map());
+        let vixi = Vixi::<Key>::with_maps(
+            make_normal_mode_map(),
+            make_insert_mode_map(),
+        );
         assert_eq!("Normal", vixi.mode());
     }
 
     #[test]
     fn insert_from_normal() {
-        let mut vixi = Vixi::<Key>::with_maps(make_normal_mode_map(),
-                                       make_insert_mode_map());
+        let mut vixi = Vixi::<Key>::with_maps(
+            make_normal_mode_map(),
+            make_insert_mode_map(),
+        );
         vixi.process(Key::Char('i'), RemapType::Remap);
         assert_eq!("Insert", vixi.mode());
     }
 
     #[test]
     fn normal_from_insert() {
-        let mut vixi = Vixi::<Key>::with_maps(make_normal_mode_map(),
-                                       make_insert_mode_map());
+        let mut vixi = Vixi::<Key>::with_maps(
+            make_normal_mode_map(),
+            make_insert_mode_map(),
+        );
         vixi.process(Key::Char('i'), RemapType::Remap);
         vixi.process(Key::Esc, RemapType::Remap);
         assert_eq!("Normal", vixi.mode());

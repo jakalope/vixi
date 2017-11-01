@@ -12,4 +12,3 @@ pub mod vixi;
 
 #[cfg(test)]
 extern crate termion;
-

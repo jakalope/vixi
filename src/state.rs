@@ -3,13 +3,21 @@ use op::{NormalOp, InsertOp};
 use typeahead::{RemapType, Typeahead};
 
 #[derive(Debug, PartialEq)]
-pub struct State<K> where K: Ord, K: Copy {
+pub struct State<K>
+where
+    K: Ord,
+    K: Copy,
+{
     pub typeahead: Typeahead<K>,
     pub normal_mode_map: ModeMap<K, NormalOp>,
     pub insert_mode_map: ModeMap<K, InsertOp>,
 }
 
-impl<K> State<K> where K: Ord, K: Copy {
+impl<K> State<K>
+where
+    K: Ord,
+    K: Copy,
+{
     pub fn new() -> Self {
         State {
             typeahead: Typeahead::<K>::new(),
@@ -18,8 +26,10 @@ impl<K> State<K> where K: Ord, K: Copy {
         }
     }
 
-    pub fn with_maps(normal_map: ModeMap<K, NormalOp>,
-                     insert_map: ModeMap<K, InsertOp>) -> Self {
+    pub fn with_maps(
+        normal_map: ModeMap<K, NormalOp>,
+        insert_map: ModeMap<K, InsertOp>,
+    ) -> Self {
         State {
             typeahead: Typeahead::<K>::new(),
             normal_mode_map: normal_map,

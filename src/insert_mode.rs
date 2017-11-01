@@ -3,15 +3,17 @@ use mode_map::MapErr;
 use op::InsertOp;
 use state::State;
 
-impl<K> Transition<K> for InsertMode<K> where K: Ord, K: Copy {
+impl<K> Transition<K> for InsertMode<K>
+where
+    K: Ord,
+    K: Copy,
+{
     fn name(&self) -> &'static str {
         "Insert"
     }
 
     fn transition(&self, state: &mut State<K>) -> Mode<K> {
-        match state.insert_mode_map.process(
-            &mut state.typeahead,
-        ) {
+        match state.insert_mode_map.process(&mut state.typeahead) {
             Err(MapErr::NoMatch) => {
                 // In Insert mode, unmatched typeahead gets inserted.
                 // TODO send keystrokes to owner.
