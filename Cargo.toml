@@ -3,5 +3,5 @@ name = "vixi"
 version = "0.1.0"
 authors = ["Jake Askeland <jake.askeland@gmail.com>"]
 
-[dev-dependencies]
+[dependencies]
 termion = { git = "https://github.com/jakalope/termion" }
