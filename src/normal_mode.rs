@@ -30,6 +30,13 @@ where
                     NormalOp::Delete => {
                         // TODO Enter operator pending mode.
                     }
+                    NormalOp::Count(n) => {
+                        state.count = n;
+                        return normal();
+                    }
+                    NormalOp::Motion(m) => {
+                        // TODO
+                    }
                 }
             }
         };

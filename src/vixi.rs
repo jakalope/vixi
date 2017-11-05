@@ -1,106 +1,101 @@
-use mode::{Mode, normal, Transition};
+use serde_json::from_str;
+use termion::event::{Event, Key, parse_event};
+
 use mode_map::ModeMap;
-use op::{InsertOp, NormalOp};
-use state::State;
-use typeahead::RemapType;
+use ordered_vec_map::InsertionResult;
+use op::{HasMotion, HasObject, PendingOp, ObjectOp, MotionOp, InsertOp,
+         NormalOp};
+use state_machine::StateMachine;
 
-pub struct Vixi<K>
+fn keys_from_str(s: &'static str) -> Vec<Key> {
+    let mut v = Vec::new();
+    let ref mut bytes = s.bytes().map(|x| Ok(x));
+    match bytes.next().unwrap() {
+        Ok(b) => {
+            match parse_event(b, bytes).unwrap() {
+                Event::Key(key) => v.push(key),
+                _ => {}
+            }
+        }
+        Err(_) => {}
+    }
+    return v;
+}
+
+macro_rules! add_motion {
+    ($map:ident, $name:tt, $op:expr) => {
+        $map.insert_motion(keys_from_str($name), $op);
+    }
+}
+
+macro_rules! add_motions {
+    ($map:ident) => {
+        add_motion!($map, "h", MotionOp::Left);
+        add_motion!($map, "l", MotionOp::Right);
+        add_motion!($map, "k", MotionOp::Up);
+        add_motion!($map, "j", MotionOp::Down);
+        add_motion!($map, "gg", MotionOp::Top);
+        add_motion!($map, "G",  MotionOp::Bottom);
+        add_motion!($map, "w",  MotionOp::Word);
+    }
+}
+
+macro_rules! add_object {
+    ($map:ident, $name:tt, $op:expr) => {
+        $map.insert_object(keys_from_str($name), $op);
+    }
+}
+
+macro_rules! add_objects {
+    ($map:ident) => {
+        add_object!($map, "aw", ObjectOp::AWord);
+        add_object!($map, "iw", ObjectOp::InnerWord);
+        add_object!($map, "aW", ObjectOp::AWORD);
+        add_object!($map, "iW", ObjectOp::InnerWORD);
+    }
+}
+
+impl<K> HasMotion<K> for ModeMap<K, NormalOp>
 where
     K: Ord,
     K: Copy,
 {
-    state: State<K>,
-    mode: Mode<K>,
+    fn insert_motion(&mut self, key: Vec<K>, op: MotionOp) -> InsertionResult {
+        self.insert_op(key, NormalOp::Motion(op))
+    }
 }
 
-impl<K> Vixi<K>
+fn normal_mode_map() -> ModeMap<Key, NormalOp> {
+    let mut map = ModeMap::<Key, NormalOp>::new();
+    map.insert_op(keys_from_str("i"), NormalOp::Insert);
+    map.insert_op(keys_from_str("d"), NormalOp::Delete);
+    add_motions!(map);
+    return map;
+}
+
+impl<K> HasMotion<K> for ModeMap<K, PendingOp>
 where
     K: Ord,
     K: Copy,
 {
-    pub fn new() -> Self {
-        Vixi {
-            state: State::<K>::new(),
-            mode: normal(),
-        }
-    }
-
-    pub fn with_maps(
-        normal_map: ModeMap<K, NormalOp>,
-        insert_map: ModeMap<K, InsertOp>,
-    ) -> Self {
-        Vixi {
-            state: State::with_maps(normal_map, insert_map),
-            mode: normal(),
-        }
-    }
-
-    pub fn process(&mut self, key: K) {
-        self.state.put(key, RemapType::Remap);
-        self.mode = self.mode.transition(&mut self.state);
-    }
-
-    pub fn mode(&self) -> &'static str {
-        self.mode.name()
+    fn insert_motion(&mut self, key: Vec<K>, op: MotionOp) -> InsertionResult {
+        self.insert_op(key, PendingOp::Motion(op))
     }
 }
 
-#[cfg(test)]
-mod test {
-    use termion::event::Key;
-    use mode_map::*;
-    use super::*;
-    use mode::*;
-    use op::*;
-
-    fn str_to_keyvec(s: &str) -> Vec<Key> {
-        let mut v = Vec::<Key>::with_capacity(s.len());
-        for c in s.chars() {
-            v.push(Key::Char(c));
-        }
-        return v;
+impl<K> HasObject<K> for ModeMap<K, PendingOp>
+where
+    K: Ord,
+    K: Copy,
+{
+    fn insert_object(&mut self, key: Vec<K>, op: ObjectOp) -> InsertionResult {
+        self.insert_op(key, PendingOp::Object(op))
     }
+}
 
-    fn make_normal_mode_map() -> ModeMap<Key, NormalOp> {
-        let mut map = ModeMap::new();
-        map.insert_op(str_to_keyvec("i"), NormalOp::Insert);
-        map.insert_op(str_to_keyvec("d"), NormalOp::Delete);
-        return map;
-    }
-
-    fn make_insert_mode_map() -> ModeMap<Key, InsertOp> {
-        let mut map = ModeMap::new();
-        map.insert_op(vec![Key::Esc], InsertOp::Cancel);
-        return map;
-    }
-
-    #[test]
-    fn start_in_normal() {
-        let vixi = Vixi::<Key>::with_maps(
-            make_normal_mode_map(),
-            make_insert_mode_map(),
-        );
-        assert_eq!("Normal", vixi.mode());
-    }
-
-    #[test]
-    fn insert_from_normal() {
-        let mut vixi = Vixi::<Key>::with_maps(
-            make_normal_mode_map(),
-            make_insert_mode_map(),
-        );
-        vixi.process(Key::Char('i'), RemapType::Remap);
-        assert_eq!("Insert", vixi.mode());
-    }
-
-    #[test]
-    fn normal_from_insert() {
-        let mut vixi = Vixi::<Key>::with_maps(
-            make_normal_mode_map(),
-            make_insert_mode_map(),
-        );
-        vixi.process(Key::Char('i'), RemapType::Remap);
-        vixi.process(Key::Esc, RemapType::Remap);
-        assert_eq!("Normal", vixi.mode());
-    }
+fn pending_mode_map() -> ModeMap<Key, PendingOp> {
+    let mut map = ModeMap::<Key, PendingOp>::new();
+    add_motions!(map);
+    add_objects!(map);
+    return map;
 }

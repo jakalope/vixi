@@ -1,5 +1,5 @@
 use mode_map::ModeMap;
-use op::{NormalOp, InsertOp};
+use op::{NormalOp, PendingOp, InsertOp};
 use typeahead::{RemapType, Typeahead};
 
 #[derive(Debug, PartialEq)]
@@ -10,7 +10,9 @@ where
 {
     pub typeahead: Typeahead<K>,
     pub normal_mode_map: ModeMap<K, NormalOp>,
+    pub pending_mode_map: ModeMap<K, PendingOp>,
     pub insert_mode_map: ModeMap<K, InsertOp>,
+    pub count: i16, // Used when an op is to be performed [count] times.
 }
 
 impl<K> State<K>
@@ -22,18 +24,23 @@ where
         State {
             typeahead: Typeahead::<K>::new(),
             normal_mode_map: ModeMap::<K, NormalOp>::new(),
+            pending_mode_map: ModeMap::<K, PendingOp>::new(),
             insert_mode_map: ModeMap::<K, InsertOp>::new(),
+            count: 0,
         }
     }
 
     pub fn with_maps(
         normal_map: ModeMap<K, NormalOp>,
+        pending_map: ModeMap<K, PendingOp>,
         insert_map: ModeMap<K, InsertOp>,
     ) -> Self {
         State {
             typeahead: Typeahead::<K>::new(),
             normal_mode_map: normal_map,
+            pending_mode_map: pending_map,
             insert_mode_map: insert_map,
+            count: 0,
         }
     }
 
