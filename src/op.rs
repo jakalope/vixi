@@ -42,7 +42,7 @@ pub enum ObjectOp {
     ASingleQuote, // A '...' block.
     InnerSingleQuote,
     ADoubleQuote,
-    InnertDoubleQuote,
+    InnerDoubleQuote,
     ABackTick, // A `...` block.
     InnerBackTick,
 }

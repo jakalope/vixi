@@ -1,48 +1,37 @@
-use serde_json::from_str;
-use termion::event::{Event, Key, parse_event};
-
 use mode_map::ModeMap;
 use ordered_vec_map::InsertionResult;
 use op::{HasMotion, HasObject, PendingOp, ObjectOp, MotionOp, InsertOp,
          NormalOp};
 use state_machine::StateMachine;
+use key::{parse, MultiKey, Key};
 
-fn keys_from_str(s: &'static str) -> Vec<Key> {
-    let mut v = Vec::new();
-    let ref mut bytes = s.bytes().map(|x| Ok(x));
-    match bytes.next().unwrap() {
-        Ok(b) => {
-            match parse_event(b, bytes).unwrap() {
-                Event::Key(key) => v.push(key),
-                _ => {}
-            }
-        }
-        Err(_) => {}
-    }
-    return v;
-}
-
-macro_rules! add_motion {
-    ($map:ident, $name:tt, $op:expr) => {
-        $map.insert_motion(keys_from_str($name), $op);
+impl HasMotion<MultiKey> for ModeMap<MultiKey, NormalOp> {
+    fn insert_motion(
+        &mut self,
+        key: Vec<MultiKey>,
+        op: MotionOp,
+    ) -> InsertionResult {
+        self.insert_op(key, NormalOp::Motion(op))
     }
 }
 
-macro_rules! add_motions {
-    ($map:ident) => {
-        add_motion!($map, "h", MotionOp::Left);
-        add_motion!($map, "l", MotionOp::Right);
-        add_motion!($map, "k", MotionOp::Up);
-        add_motion!($map, "j", MotionOp::Down);
-        add_motion!($map, "gg", MotionOp::Top);
-        add_motion!($map, "G",  MotionOp::Bottom);
-        add_motion!($map, "w",  MotionOp::Word);
-    }
+fn add_motions<Op>(map: &mut ModeMap<MultiKey, Op>)
+where
+    Op: Copy,
+    ModeMap<MultiKey, Op>: HasMotion<MultiKey>,
+{
+    map.insert_motion(parse::parse("h"), MotionOp::Left);
+    map.insert_motion(parse::parse("l"), MotionOp::Right);
+    map.insert_motion(parse::parse("k"), MotionOp::Up);
+    map.insert_motion(parse::parse("j"), MotionOp::Down);
+    map.insert_motion(parse::parse("gg"), MotionOp::Top);
+    map.insert_motion(parse::parse("G"), MotionOp::Bottom);
+    map.insert_motion(parse::parse("w"), MotionOp::Word);
 }
 
 macro_rules! add_object {
     ($map:ident, $name:tt, $op:expr) => {
-        $map.insert_object(keys_from_str($name), $op);
+        $map.insert_object(parse::parse($name), $op);
     }
 }
 
@@ -55,47 +44,37 @@ macro_rules! add_objects {
     }
 }
 
-impl<K> HasMotion<K> for ModeMap<K, NormalOp>
-where
-    K: Ord,
-    K: Copy,
-{
-    fn insert_motion(&mut self, key: Vec<K>, op: MotionOp) -> InsertionResult {
-        self.insert_op(key, NormalOp::Motion(op))
-    }
-}
-
-fn normal_mode_map() -> ModeMap<Key, NormalOp> {
-    let mut map = ModeMap::<Key, NormalOp>::new();
-    map.insert_op(keys_from_str("i"), NormalOp::Insert);
-    map.insert_op(keys_from_str("d"), NormalOp::Delete);
-    add_motions!(map);
+fn normal_mode_map() -> ModeMap<MultiKey, NormalOp> {
+    let mut map = ModeMap::<MultiKey, NormalOp>::new();
+    map.insert_op(parse::parse("i"), NormalOp::Insert);
+    map.insert_op(parse::parse("d"), NormalOp::Delete);
+    add_motions(&mut map);
     return map;
 }
 
-impl<K> HasMotion<K> for ModeMap<K, PendingOp>
-where
-    K: Ord,
-    K: Copy,
-{
-    fn insert_motion(&mut self, key: Vec<K>, op: MotionOp) -> InsertionResult {
+impl HasMotion<MultiKey> for ModeMap<MultiKey, PendingOp> {
+    fn insert_motion(
+        &mut self,
+        key: Vec<MultiKey>,
+        op: MotionOp,
+    ) -> InsertionResult {
         self.insert_op(key, PendingOp::Motion(op))
     }
 }
 
-impl<K> HasObject<K> for ModeMap<K, PendingOp>
-where
-    K: Ord,
-    K: Copy,
-{
-    fn insert_object(&mut self, key: Vec<K>, op: ObjectOp) -> InsertionResult {
+impl HasObject<MultiKey> for ModeMap<MultiKey, PendingOp> {
+    fn insert_object(
+        &mut self,
+        key: Vec<MultiKey>,
+        op: ObjectOp,
+    ) -> InsertionResult {
         self.insert_op(key, PendingOp::Object(op))
     }
 }
 
-fn pending_mode_map() -> ModeMap<Key, PendingOp> {
-    let mut map = ModeMap::<Key, PendingOp>::new();
-    add_motions!(map);
+fn pending_mode_map() -> ModeMap<MultiKey, PendingOp> {
+    let mut map = ModeMap::<MultiKey, PendingOp>::new();
     add_objects!(map);
+    add_motions(&mut map);
     return map;
 }

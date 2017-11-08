@@ -48,7 +48,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use termion::event::Key;
+    use key::Key;
     use mode_map::*;
     use super::*;
     use mode::*;
