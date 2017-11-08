@@ -60,10 +60,11 @@ pub enum MultiKey {
     A(Key), // A single keystroke.
     Shift(Key),
     Ctrl(Key),
-    Alt(Key),
-    Cmd(Key),
+    Alt(Key), // aka Meta, aka Option.
+    Cmd(Key), // Apple's Command key.
 }
 
+// TODO Provide a method to parse raw key data for these keys.
 pub fn parse_angle(buffer: &str) -> Option<Key> {
     let key = match buffer.to_lowercase().as_ref() {
         "nul" => Key::Null,
@@ -197,7 +198,6 @@ pub mod parse {
         )
     );
     named!(any<&str, MultiKey>, alt!( angle | key ));
-
     named!(parse_keys<&str, Vec<MultiKey>>, many0!(
             alt!(shift | ctrl | meta | alt | cmd | any)));
 
