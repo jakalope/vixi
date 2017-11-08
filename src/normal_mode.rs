@@ -24,11 +24,17 @@ where
             } 
             Ok(op) => {
                 match op {
+                    NormalOp::Cancel => {
+                        // TODO clear various members of state
+                    }
                     NormalOp::Insert => {
                         return insert();
                     }
                     NormalOp::Delete => {
                         // TODO Enter operator pending mode.
+                    }
+                    NormalOp::Repeat => {
+                        // TODO
                     }
                     NormalOp::Count(n) => {
                         state.count = n;

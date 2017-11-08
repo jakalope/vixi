@@ -1,3 +1,84 @@
+## Modes (:help vim-modes)
+```
+Normal mode		In Normal mode you can enter all the normal editor
+			commands.  If you start the editor you are in this
+			mode (unless you have set the 'insertmode' option,
+			see below).  This is also known as command mode.
+
+Visual mode		This is like Normal mode, but the movement commands
+			extend a highlighted area.  When a non-movement
+			command is used, it is executed for the highlighted
+			area.  See |Visual-mode|.
+			If the 'showmode' option is on "-- VISUAL --" is shown
+			at the bottom of the window.
+
+Select mode		This looks most like the MS-Windows selection mode.
+			Typing a printable character deletes the selection
+			and starts Insert mode.  See |Select-mode|.
+			If the 'showmode' option is on "-- SELECT --" is shown
+			at the bottom of the window.
+
+Insert mode		In Insert mode the text you type is inserted into the
+			buffer.  See |Insert-mode|.
+			If the 'showmode' option is on "-- INSERT --" is shown
+			at the bottom of the window.
+
+Command-line mode	In Command-line mode (also called Cmdline mode) you
+Cmdline mode		can enter one line of text at the bottom of the
+			window.  This is for the Ex commands, ":", the pattern
+			search commands, "?" and "/", and the filter command,
+			"!".  |Cmdline-mode|
+
+Ex mode			Like Command-line mode, but after entering a command
+			you remain in Ex mode.  Very limited editing of the
+			command line.  |Ex-mode|
+
+							*Terminal-mode*
+Terminal mode		In Terminal mode all input (except |c_CTRL-\_CTRL-N|)
+			is sent to the process running in the current
+			|terminal| buffer.
+			If the 'showmode' option is on "-- TERMINAL --" is shown
+			at the bottom of the window.
+
+There are six ADDITIONAL modes.  These are variants of the BASIC modes:
+
+				*Operator-pending* *Operator-pending-mode*
+Operator-pending mode	This is like Normal mode, but after an operator
+			command has started, and Vim is waiting for a {motion}
+			to specify the text that the operator will work on.
+
+Replace mode		Replace mode is a special case of Insert mode.  You
+			can do the same things as in Insert mode, but for
+			each character you enter, one character of the existing
+			text is deleted.  See |Replace-mode|.
+			If the 'showmode' option is on "-- REPLACE --" is
+			shown at the bottom of the window.
+
+Virtual Replace mode	Virtual Replace mode is similar to Replace mode, but
+			instead of file characters you are replacing screen
+			real estate.  See |Virtual-Replace-mode|.
+			If the 'showmode' option is on "-- VREPLACE --" is
+			shown at the bottom of the window.
+
+Insert Normal mode	Entered when CTRL-O given in Insert mode.  This is
+			like Normal mode, but after executing one command Vim
+			returns to Insert mode.
+			If the 'showmode' option is on "-- (insert) --" is
+			shown at the bottom of the window.
+
+Insert Visual mode	Entered when starting a Visual selection from Insert
+			mode, e.g., by using CTRL-O and then "v", "V" or
+			CTRL-V.  When the Visual selection ends, Vim returns
+			to Insert mode.
+			If the 'showmode' option is on "-- (insert) VISUAL --"
+			is shown at the bottom of the window.
+
+Insert Select mode	Entered when starting Select mode from Insert mode.
+			E.g., by dragging the mouse or <S-Right>.
+			When the Select mode ends, Vim returns to Insert mode.
+			If the 'showmode' option is on "-- (insert) SELECT --"
+			is shown at the bottom of the window.
+```
 ## Key Notation (:help key-notation)
 
 ```

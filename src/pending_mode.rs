@@ -37,6 +37,9 @@ where
             } 
             Ok(op) => {
                 match op {
+                    PendingOp::Cancel => {
+                        // TODO drop back to normal mode; clear count.
+                    }
                     PendingOp::Count(n) => {
                         state.count = n;
                         return pending(self.next_mode);

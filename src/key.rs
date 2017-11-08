@@ -193,7 +193,7 @@ pub mod parse {
         key<&str, MultiKey>,
         map_opt!(
             take_s!(1),
-            |st| { parse_any(st).map(|x| MultiKey::A(x)) }
+            |st| { parse_key(st).map(|x| MultiKey::A(x)) }
         )
     );
     named!(any<&str, MultiKey>, alt!( angle | key ));

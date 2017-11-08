@@ -50,14 +50,17 @@ pub enum ObjectOp {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum NormalOp {
-    Insert, // Insert (i). Transitions to Insert.
-    Delete, // Delete (d). Transitions to Pending.
+    Cancel, // Drop back to normal (Esc).
+    Insert, // Transitions to Insert (i).
+    Delete, // Transitions to Pending (d).
+    Repeat, // Repeats the last change (.). TODO redo-register
     Count(i16), // Modifies state.count.
     Motion(MotionOp), // Moves cursor. Transitions back to Normal.
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PendingOp {
+    Cancel, // Drop back to normal (Esc).
     Count(i16),
     Motion(MotionOp), // Cursor motions.
     Object(ObjectOp), // Text-objects.
