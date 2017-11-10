@@ -44,6 +44,10 @@ where
                         state.count = n;
                         return pending(self.next_mode);
                     }
+                    PendingOp::Operator(o) => {
+                        // TODO Perform operation over [motion].
+                        return self.next_mode();
+                    }
                     PendingOp::Motion(m) => {
                         // TODO Perform operation over [motion].
                         return self.next_mode();

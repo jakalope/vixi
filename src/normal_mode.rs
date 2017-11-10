@@ -1,4 +1,4 @@
-use mode::{insert, normal, NormalMode, Mode, Transition};
+use mode::{NextMode, pending, insert, normal, NormalMode, Mode, Transition};
 use mode_map::MapErr;
 use op::NormalOp;
 use state::State;
@@ -30,15 +30,17 @@ where
                     NormalOp::Insert => {
                         return insert();
                     }
-                    NormalOp::Delete => {
-                        // TODO Enter operator pending mode.
-                    }
                     NormalOp::Repeat => {
                         // TODO
                     }
                     NormalOp::Count(n) => {
                         state.count = n;
                         return normal();
+                    }
+                    NormalOp::Operator(o) => {
+                        // TODO
+                        // Enter operator pending mode.
+                        return pending(NextMode::Normal);
                     }
                     NormalOp::Motion(m) => {
                         // TODO

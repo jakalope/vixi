@@ -1,11 +1,37 @@
 use ordered_vec_map::InsertionResult;
 
+pub trait HasOperator<K> {
+    fn insert_operator(
+        &mut self,
+        key: Vec<K>,
+        op: OperatorOp,
+    ) -> InsertionResult;
+}
+
 pub trait HasMotion<K> {
     fn insert_motion(&mut self, key: Vec<K>, op: MotionOp) -> InsertionResult;
 }
 
 pub trait HasObject<K> {
     fn insert_object(&mut self, key: Vec<K>, op: ObjectOp) -> InsertionResult;
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum OperatorOp {
+    Change, // c
+    Delete, // d
+    Yank, // y
+    SwapCase, // ~, g~
+    ToLower, // gu
+    ToUpper, // gU
+    ExternalPrg, // !
+    EqualPrg, // =
+    TextFormat, // gq
+    Rot13, // g?
+    ShiftRight, // >
+    ShiftLeft, // <
+    DefineFold, // zf
+    OperatorFunc, // g@
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -52,9 +78,9 @@ pub enum ObjectOp {
 pub enum NormalOp {
     Cancel, // Drop back to normal (Esc).
     Insert, // Transitions to Insert (i).
-    Delete, // Transitions to Pending (d).
     Repeat, // Repeats the last change (.). TODO redo-register
     Count(i16), // Modifies state.count.
+    Operator(OperatorOp),
     Motion(MotionOp), // Moves cursor. Transitions back to Normal.
 }
 
@@ -62,6 +88,7 @@ pub enum NormalOp {
 pub enum PendingOp {
     Cancel, // Drop back to normal (Esc).
     Count(i16),
+    Operator(OperatorOp),
     Motion(MotionOp), // Cursor motions.
     Object(ObjectOp), // Text-objects.
 }

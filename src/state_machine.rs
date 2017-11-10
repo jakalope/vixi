@@ -65,7 +65,6 @@ mod test {
     fn make_normal_mode_map() -> ModeMap<Key, NormalOp> {
         let mut map = ModeMap::new();
         map.insert_op(str_to_keyvec("i"), NormalOp::Insert);
-        map.insert_op(str_to_keyvec("d"), NormalOp::Delete);
         return map;
     }
 
