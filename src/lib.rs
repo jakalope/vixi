@@ -11,15 +11,16 @@ extern crate regex;
 
 mod disambiguation_map;
 mod insert_mode;
+mod key;
+mod maps;
 mod mode;
 mod mode_map;
 mod normal_mode;
-mod pending_mode;
 mod op;
 mod ordered_vec_map;
+mod pending_mode;
 mod state;
-mod typeahead;
 mod state_machine;
-mod key;
+mod typeahead;
 
 pub mod vixi;

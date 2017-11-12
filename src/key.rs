@@ -1,5 +1,4 @@
 use nom::IResult;
-use std::str::from_utf8;
 
 #[derive(Serialize, Deserialize, PartialOrd, Ord, Debug, Copy, Clone,
          PartialEq, Eq, Hash)]
