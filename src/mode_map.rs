@@ -51,6 +51,7 @@ where
     }
 
     /// Process a typeahead buffer.
+    /// Numeric string prefixes are managed by each mode after this method.
     pub fn process(&self, typeahead: &mut Typeahead<K>) -> Result<Op, MapErr> {
         // Grab keys from the front of the queue, looking for matches.
         let mut i: i32 = 0;
