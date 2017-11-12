@@ -138,6 +138,21 @@ where
 
 struct DecimalMap {}
 
+impl DecimalMap {
+    fn decimal(key: MultiKey) -> Option<char> {
+        match key {
+            MultiKey::A(Key::Char(c)) => {
+                if c.is_digit(10) {
+                    return Some(c);
+                } else {
+                    return None;
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
 impl NumericMap<MultiKey> for DecimalMap {
     /// Parses the front of the typeahead buffer for a non-negative decimal
     /// integer string.
@@ -153,32 +168,27 @@ impl NumericMap<MultiKey> for DecimalMap {
     ///   non-numeric.
     fn process(&self, typeahead: &mut Typeahead<MultiKey>) -> Match<i32> {
         let mut s = String::with_capacity(typeahead.len());
-        let mut found_non_digit = false;
+        let mut full_match_found = false;
         for key in typeahead.value_iter() {
-            match key {
-                MultiKey::A(Key::Char(c)) => {
-                    if c.is_digit(10) {
-                        s.push(c);
+            match DecimalMap::decimal(key) {
+                Some(c) => {
+                    s.push(c);
+                }
+                None => {
+                    if s.is_empty() {
+                        return Match::NoMatch;
                     } else {
-                        found_non_digit = true;
+                        full_match_found = true;
                         break;
                     }
                 }
-                _ => {
-                    found_non_digit = true;
-                    break;
-                }
             }
         }
-        if found_non_digit {
-            if s.is_empty() {
-                return Match::NoMatch;
-            } else {
-                for i in 0..s.len() {
-                    typeahead.pop_front();
-                }
-                return Match::FullMatch(s.parse::<i32>().unwrap());
+        if full_match_found {
+            for i in 0..s.len() {
+                typeahead.pop_front();
             }
+            return Match::FullMatch(s.parse::<i32>().unwrap());
         }
         return Match::PartialMatch;
     }
@@ -221,7 +231,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn parse_numeric_full_match() {
+    fn decimal_full_match() {
         let map = DecimalMap {};
         let mut typeahead = Typeahead::new();
         typeahead.put_front(&parse("12345g"), RemapType::Remap);
@@ -231,7 +241,17 @@ mod test {
     }
 
     #[test]
-    fn parse_numeric_partial_match() {
+    fn decimal_full_match_two() {
+        let map = DecimalMap {};
+        let mut typeahead = Typeahead::new();
+        typeahead.put_front(&parse("12345gg1"), RemapType::Remap);
+        let result = map.process(&mut typeahead);
+        assert_eq!(Match::FullMatch(12345), result);
+        assert_eq!(3, typeahead.len());
+    }
+
+    #[test]
+    fn decimal_partial_match() {
         let map = DecimalMap {};
         let mut typeahead = Typeahead::new();
         typeahead.put_front(&parse("12345"), RemapType::Remap);
@@ -241,7 +261,7 @@ mod test {
     }
 
     #[test]
-    fn parse_numeric_no_match() {
+    fn decimal_no_match() {
         let map = DecimalMap {};
         let mut typeahead = Typeahead::new();
         typeahead.put_front(&parse("g12345"), RemapType::Remap);
