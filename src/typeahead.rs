@@ -1,6 +1,11 @@
 use std::collections::VecDeque;
 use std::collections::vec_deque::{Drain, Iter};
 use std::ops::Range;
+use disambiguation_map::Match;
+
+pub trait Numeric {
+    fn decimal(&self) -> Option<char>;
+}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RemapType {
@@ -48,6 +53,7 @@ impl<K> Typeahead<K>
 where
     K: Ord,
     K: Copy,
+    K: Numeric,
 {
     pub fn new() -> Self {
         Typeahead { buffer: VecDeque::new() }
@@ -95,5 +101,44 @@ where
 
     pub fn drain(&mut self, range: Range<usize>) -> Drain<(K, RemapType)> {
         self.buffer.drain(range)
+    }
+
+    /// Parses the front of the typeahead buffer for a non-negative decimal
+    /// integer string.
+    ///
+    /// Returns
+    /// * `Match::FullMatch(N)` if a non-empty numeric string of
+    ///   value `N` was found, followed by a non-numeric character. The
+    ///   non-numeric character implies the numeric string is complete.
+    /// * `Match::PartialMatch` if the typeahead buffer contains only
+    ///   decimal digits. This implies the numeric string might not be
+    ///   complete.
+    /// * `Match::NoMatch` if the first character in the typeahead buffer is
+    ///   non-numeric.
+    pub fn parse_decimal(&mut self) -> Match<i32> {
+        let mut s = String::with_capacity(self.len());
+        let mut full_match_found = false;
+        for key in self.value_iter() {
+            match key.decimal() {
+                Some(c) => {
+                    s.push(c);
+                }
+                None => {
+                    if s.is_empty() {
+                        return Match::NoMatch;
+                    } else {
+                        full_match_found = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if full_match_found {
+            for i in 0..s.len() {
+                self.pop_front();
+            }
+            return Match::FullMatch(s.parse::<i32>().unwrap());
+        }
+        return Match::PartialMatch;
     }
 }

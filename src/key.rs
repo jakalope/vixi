@@ -1,4 +1,5 @@
 use nom::IResult;
+use typeahead::Numeric;
 
 #[derive(Serialize, Deserialize, PartialOrd, Ord, Debug, Copy, Clone,
          PartialEq, Eq, Hash)]
@@ -61,6 +62,21 @@ pub enum MultiKey {
     Ctrl(Key),
     Alt(Key), // aka Meta, aka Option.
     Cmd(Key), // Apple's Command key.
+}
+
+impl Numeric for MultiKey {
+    fn decimal(&self) -> Option<char> {
+        match *self {
+            MultiKey::A(Key::Char(c)) => {
+                if c.is_digit(10) {
+                    return Some(c);
+                } else {
+                    return None;
+                }
+            }
+            _ => None,
+        }
+    }
 }
 
 // From vim, :help map-special-keys:

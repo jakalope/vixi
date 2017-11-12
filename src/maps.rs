@@ -5,7 +5,6 @@ use mode_map::ModeMap;
 use op::{HasOperator, HasMotion, HasObject, PendingOp, ObjectOp, MotionOp,
          InsertOp, NormalOp, OperatorOp};
 use ordered_vec_map::InsertionResult;
-use state::NumericMap;
 use typeahead::{RemapType, Typeahead};
 
 impl HasOperator<MultiKey> for ModeMap<MultiKey, NormalOp> {
@@ -136,68 +135,6 @@ where
     map.insert_object(parse("i`"), InnerBackTick);
 }
 
-struct DecimalMap {}
-
-impl DecimalMap {
-    fn decimal(key: MultiKey) -> Option<char> {
-        match key {
-            MultiKey::A(Key::Char(c)) => {
-                if c.is_digit(10) {
-                    return Some(c);
-                } else {
-                    return None;
-                }
-            }
-            _ => None,
-        }
-    }
-}
-
-impl NumericMap<MultiKey> for DecimalMap {
-    /// Parses the front of the typeahead buffer for a non-negative decimal
-    /// integer string.
-    ///
-    /// Returns
-    /// * `Match::FullMatch(N)` if a non-empty numeric string of
-    ///   value `N` was found, followed by a non-numeric character. The
-    ///   non-numeric character implies the numeric string is complete.
-    /// * `Match::PartialMatch` if the typeahead buffer contains only
-    ///   decimal digits. This implies the numeric string might not be
-    ///   complete.
-    /// * `Match::NoMatch` if the first character in the typeahead buffer is
-    ///   non-numeric.
-    fn process(&self, typeahead: &mut Typeahead<MultiKey>) -> Match<i32> {
-        let mut s = String::with_capacity(typeahead.len());
-        let mut full_match_found = false;
-        for key in typeahead.value_iter() {
-            match DecimalMap::decimal(key) {
-                Some(c) => {
-                    s.push(c);
-                }
-                None => {
-                    if s.is_empty() {
-                        return Match::NoMatch;
-                    } else {
-                        full_match_found = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if full_match_found {
-            for i in 0..s.len() {
-                typeahead.pop_front();
-            }
-            return Match::FullMatch(s.parse::<i32>().unwrap());
-        }
-        return Match::PartialMatch;
-    }
-}
-
-pub fn numeric_map() -> Box<NumericMap<MultiKey>> {
-    Box::new(DecimalMap {})
-}
-
 pub fn normal_mode_map() -> ModeMap<MultiKey, NormalOp> {
     use op::NormalOp::*;
     let mut map = ModeMap::new();
@@ -232,40 +169,36 @@ mod test {
 
     #[test]
     fn decimal_full_match() {
-        let map = DecimalMap {};
         let mut typeahead = Typeahead::new();
         typeahead.put_front(&parse("12345g"), RemapType::Remap);
-        let result = map.process(&mut typeahead);
+        let result = typeahead.parse_decimal();
         assert_eq!(Match::FullMatch(12345), result);
         assert_eq!(1, typeahead.len());
     }
 
     #[test]
     fn decimal_full_match_two() {
-        let map = DecimalMap {};
         let mut typeahead = Typeahead::new();
         typeahead.put_front(&parse("12345gg1"), RemapType::Remap);
-        let result = map.process(&mut typeahead);
+        let result = typeahead.parse_decimal();
         assert_eq!(Match::FullMatch(12345), result);
         assert_eq!(3, typeahead.len());
     }
 
     #[test]
     fn decimal_partial_match() {
-        let map = DecimalMap {};
         let mut typeahead = Typeahead::new();
         typeahead.put_front(&parse("12345"), RemapType::Remap);
-        let result = map.process(&mut typeahead);
+        let result = typeahead.parse_decimal();
         assert_eq!(Match::PartialMatch, result);
         assert_eq!(5, typeahead.len());
     }
 
     #[test]
     fn decimal_no_match() {
-        let map = DecimalMap {};
         let mut typeahead = Typeahead::new();
         typeahead.put_front(&parse("g12345"), RemapType::Remap);
-        let result = map.process(&mut typeahead);
+        let result = typeahead.parse_decimal();
         assert_eq!(Match::NoMatch, result);
         assert_eq!(6, typeahead.len());
     }

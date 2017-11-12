@@ -2,11 +2,13 @@ use mode::{insert, normal, InsertMode, Mode, Transition};
 use mode_map::MapErr;
 use op::InsertOp;
 use state::State;
+use typeahead::Numeric;
 
 impl<K> Transition<K> for InsertMode<K>
 where
     K: Ord,
     K: Copy,
+    K: Numeric,
 {
     fn name(&self) -> &'static str {
         "Insert"
@@ -25,7 +27,7 @@ where
             Ok(op) => {
                 match op {
                     InsertOp::Cancel => {
-                        return normal();
+                        return normal(1);
                     }
                 }
             }

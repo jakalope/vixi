@@ -1,7 +1,7 @@
 use key::MultiKey;
 use key::parse::parse;
 use state_machine::StateMachine;
-use maps::{numeric_map, normal_mode_map, insert_mode_map, pending_mode_map};
+use maps::{normal_mode_map, insert_mode_map, pending_mode_map};
 
 pub struct Vixi {
     mode: StateMachine<MultiKey>,
@@ -11,7 +11,6 @@ impl Vixi {
     pub fn new() -> Self {
         Vixi {
             mode: StateMachine::with_maps(
-                numeric_map(),
                 normal_mode_map(),
                 pending_mode_map(),
                 insert_mode_map(),

@@ -1,29 +1,31 @@
 use disambiguation_map::Match;
-use mode::{NextMode, pending, insert, normal, NormalMode, Mode, Transition};
+use mode::*;
 use mode_map::MapErr;
 use op::NormalOp;
 use state::State;
+use typeahead::Numeric;
 
 impl<K> Transition<K> for NormalMode<K>
 where
     K: Ord,
     K: Copy,
+    K: Numeric,
 {
     fn name(&self) -> &'static str {
         "Normal"
     }
 
     fn transition(&self, state: &mut State<K>) -> Mode<K> {
-        match state.numeric_map.process(&mut state.typeahead) {
-            Match::PartialMatch => {
-                // Waiting for numeric to finish being matched.
-                return normal();
-            }
+        let mut count = 1;
+        match state.typeahead.parse_decimal() {
             Match::FullMatch(n) => {
-                state.count = n;
+                count = n;
+            }
+            Match::PartialMatch => {
+                return recast_normal(self);
             }
             Match::NoMatch => {}
-        }
+        };
         match state.normal_mode_map.process(&mut state.typeahead) {
             Err(MapErr::NoMatch) => {
                 // In Normal mode, unmatched typeahead gets dropped.
@@ -44,14 +46,10 @@ where
                     NormalOp::Repeat => {
                         // TODO
                     }
-                    NormalOp::Count(n) => {
-                        state.count = n;
-                        return normal();
-                    }
                     NormalOp::Operator(o) => {
                         // TODO
                         // Enter operator pending mode.
-                        return pending(NextMode::Normal);
+                        return pending(NextMode::Normal, count);
                     }
                     NormalOp::Motion(m) => {
                         // TODO
@@ -60,6 +58,6 @@ where
             }
         };
         // Stay in normal mode.
-        normal()
+        normal(count)
     }
 }

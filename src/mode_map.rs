@@ -7,7 +7,16 @@ use disambiguation_map::{DisambiguationMap, Match};
 use ordered_vec_map::InsertionResult;
 use std::cmp::min;
 use std::ops::Range;
-use typeahead::{Typeahead, RemapType};
+use typeahead::{Numeric, Typeahead, RemapType};
+
+impl Numeric for u8 {
+    fn decimal(&self) -> Option<char> {
+        match *self {
+            b'0'...b'9' => Some(*self as char),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MapErr {
@@ -20,6 +29,7 @@ pub struct ModeMap<K, Op>
 where
     K: Ord,
     K: Copy,
+    K: Numeric,
     Op: Copy,
 {
     remap_map: DisambiguationMap<K, Vec<K>>,
@@ -30,6 +40,7 @@ impl<K, Op> ModeMap<K, Op>
 where
     K: Ord,
     K: Copy,
+    K: Numeric,
     Op: Copy,
 {
     pub fn new() -> Self {

@@ -79,7 +79,6 @@ pub enum NormalOp {
     Cancel, // Drop back to normal (Esc).
     Insert, // Transitions to Insert (i).
     Repeat, // Repeats the last change (.). TODO redo-register
-    Count(i32), // Modifies state.count.
     Operator(OperatorOp),
     Motion(MotionOp), // Moves cursor. Transitions back to Normal.
 }
@@ -87,7 +86,6 @@ pub enum NormalOp {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PendingOp {
     Cancel, // Drop back to normal (Esc).
-    Count(i32),
     Operator(OperatorOp),
     Motion(MotionOp), // Cursor motions.
     Object(ObjectOp), // Text-objects.
