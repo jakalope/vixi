@@ -78,6 +78,8 @@ pub enum ObjectOp {
 pub enum NormalOp {
     Cancel, // Drop back to normal (Esc).
     Insert, // Transitions to Insert (i).
+    ReplaceChar, // Replace a single character.
+    ReplaceMode, // Transitions to Replace (r).
     Repeat, // Repeats the last change (.). TODO redo-register
     Operator(OperatorOp),
     Motion(MotionOp), // Moves cursor. Transitions back to Normal.
@@ -91,11 +93,23 @@ pub enum PendingOp {
     Object(ObjectOp), // Text-objects.
 }
 
+// :help ins-special-keys
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum InsertOp {
     Cancel, // Drop back to normal (Esc).
-    Up, // Up arrow
-    Down, // Down arrow
-    Left, // Left arrow
-    Right, // Right arrow
+    Quit, // Go back to normal without abbreviations (Ctrl-C).
+    Up,
+    Down,
+    Left,
+    Right,
+    PageUp,
+    PageDown,
+    Backspace,
+    Delete,
+    DeleteWord, // (Ctrl-W).
+    DeleteLine, // (Ctrl-U).
+    Tab,
+    Digraph, // (Ctrl-K).
+    InsertRegister, // (Ctrl-R).
+    InsertRegisterContents, // (Ctrl-R Ctrl-R).
 }

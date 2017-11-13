@@ -34,6 +34,7 @@ pub struct PendingMode<K> {
 #[derive(Clone, Copy, Debug)]
 pub struct InsertMode<K> {
     t: PhantomData<K>,
+    replace_mode: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -66,7 +67,17 @@ pub fn recast_pending<K>(orig: &PendingMode<K>) -> Mode<K> {
 }
 
 pub fn insert<K>() -> Mode<K> {
-    Mode::Insert(InsertMode::<K> { t: PhantomData::<K> {} })
+    Mode::Insert(InsertMode::<K> {
+        t: PhantomData::<K> {},
+        replace_mode: false,
+    })
+}
+
+pub fn replace<K>() -> Mode<K> {
+    Mode::Insert(InsertMode::<K> {
+        t: PhantomData::<K> {},
+        replace_mode: true,
+    })
 }
 
 impl<K> Transition<K> for Mode<K>

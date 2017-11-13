@@ -30,18 +30,25 @@ where
                     InsertOp::Cancel => {
                         return normal();
                     }
-                    InsertOp::Up => {
-                        // TODO Tell Xi to move the cursor.
+                    InsertOp::Quit => {
+                        state.cancel();
+                        return normal();
                     }
-                    InsertOp::Down => {
-                        // TODO Tell Xi to move the cursor.
-                    }
-                    InsertOp::Left => {
-                        // TODO Tell Xi to move the cursor.
-                    }
-                    InsertOp::Right => {
-                        // TODO Tell Xi to move the cursor.
-                    }
+                    // TODO
+                    InsertOp::Up => {}
+                    InsertOp::Down => {}
+                    InsertOp::Left => {}
+                    InsertOp::Right => {}
+                    InsertOp::PageUp => {}
+                    InsertOp::PageDown => {}
+                    InsertOp::Backspace => {}
+                    InsertOp::Delete => {}
+                    InsertOp::DeleteWord => {}
+                    InsertOp::DeleteLine => {}
+                    InsertOp::Tab => {}
+                    InsertOp::Digraph => {}
+                    InsertOp::InsertRegister => {}
+                    InsertOp::InsertRegisterContents => {}
                 }
             }
         }

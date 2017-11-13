@@ -51,6 +51,12 @@ where
                     NormalOp::Insert => {
                         return insert();
                     }
+                    NormalOp::ReplaceChar => {
+                        // TODO
+                    }
+                    NormalOp::ReplaceMode => {
+                        return replace();
+                    }
                     NormalOp::Repeat => {
                         // TODO
                     }

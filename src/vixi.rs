@@ -4,13 +4,13 @@ use state_machine::StateMachine;
 use maps::{normal_mode_map, insert_mode_map, pending_mode_map};
 
 pub struct Vixi {
-    mode: StateMachine<MultiKey>,
+    machine: StateMachine<MultiKey>,
 }
 
 impl Vixi {
     pub fn new() -> Self {
         Vixi {
-            mode: StateMachine::with_maps(
+            machine: StateMachine::with_maps(
                 normal_mode_map(),
                 pending_mode_map(),
                 insert_mode_map(),
@@ -20,12 +20,12 @@ impl Vixi {
 
     pub fn process(&mut self, keys: &str) {
         for key in parse(keys) {
-            self.mode.process(key);
+            self.machine.process(key);
         }
     }
 
     pub fn mode(&self) -> &'static str {
-        self.mode.mode()
+        self.machine.mode()
     }
 }
 
@@ -49,7 +49,7 @@ mod test {
     #[test]
     fn insert_text() {
         let mut vixi = Vixi::new();
-        vixi.process("ir");
+        vixi.process("iasdf");
         assert_eq!("Insert", vixi.mode());
     }
 

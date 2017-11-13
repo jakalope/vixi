@@ -140,6 +140,8 @@ pub fn normal_mode_map() -> ModeMap<MultiKey, NormalOp> {
     let mut map = ModeMap::new();
     map.insert_op(parse("<Esc>"), Cancel);
     map.insert_op(parse("i"), Insert);
+    map.insert_op(parse("r"), ReplaceChar);
+    map.insert_op(parse("R"), ReplaceMode);
     map.insert_op(parse("."), Repeat);
     add_operators(&mut map);
     add_motions(&mut map);
