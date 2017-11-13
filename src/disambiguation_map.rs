@@ -1,6 +1,6 @@
 use ordered_vec_map::{InsertionResult, OrderedVecMap, RemovalResult};
 use std::cmp::{min, max, Ord, Ordering};
-use typeahead::{Numeric, RemapType, Typeahead};
+use typeahead::{Parse, RemapType, Typeahead};
 
 // TODO Handle noremap (key,value) by surrounding value with non-input-able
 // keys, so if it gets put in the typeahead, it cannot possibly be remapped.
@@ -10,7 +10,7 @@ pub struct DisambiguationMap<K, T>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
     T: Clone,
 {
     // Use an ordered map in order to trade insertion speed for lookup speed.
@@ -109,7 +109,7 @@ impl<K, T> DisambiguationMap<K, T>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
     T: Clone,
 {
     pub fn new() -> Self {

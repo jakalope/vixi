@@ -2,13 +2,13 @@ use mode::{insert, normal, InsertMode, Mode, Transition};
 use mode_map::MapErr;
 use op::InsertOp;
 use state::State;
-use typeahead::Numeric;
+use typeahead::Parse;
 
 impl<K> Transition<K> for InsertMode<K>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
 {
     fn name(&self) -> &'static str {
         "Insert"
@@ -18,7 +18,8 @@ where
         match state.insert_mode_map.process(&mut state.typeahead) {
             Err(MapErr::NoMatch) => {
                 // In Insert mode, unmatched typeahead gets inserted.
-                // TODO send keystrokes to owner.
+                // TODO send string to Xi.
+                println!("{}", state.typeahead.parse_string());
             } 
             Err(MapErr::InfiniteRecursion) => {
                 // TODO Tell the user they've created an infinite remap loop.
@@ -27,7 +28,19 @@ where
             Ok(op) => {
                 match op {
                     InsertOp::Cancel => {
-                        return normal(1);
+                        return normal();
+                    }
+                    InsertOp::Up => {
+                        // TODO Tell Xi to move the cursor.
+                    }
+                    InsertOp::Down => {
+                        // TODO Tell Xi to move the cursor.
+                    }
+                    InsertOp::Left => {
+                        // TODO Tell Xi to move the cursor.
+                    }
+                    InsertOp::Right => {
+                        // TODO Tell Xi to move the cursor.
                     }
                 }
             }

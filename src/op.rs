@@ -94,4 +94,8 @@ pub enum PendingOp {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum InsertOp {
     Cancel, // Drop back to normal (Esc).
+    Up, // Up arrow
+    Down, // Down arrow
+    Left, // Left arrow
+    Right, // Right arrow
 }

@@ -47,6 +47,13 @@ mod test {
     }
 
     #[test]
+    fn insert_text() {
+        let mut vixi = Vixi::new();
+        vixi.process("ir");
+        assert_eq!("Insert", vixi.mode());
+    }
+
+    #[test]
     fn insert_to_normal() {
         let mut vixi = Vixi::new();
         vixi.process("i<esc>");
@@ -54,9 +61,23 @@ mod test {
     }
 
     #[test]
+    fn insert_text_then_normal() {
+        let mut vixi = Vixi::new();
+        vixi.process("ir<esc>");
+        assert_eq!("Normal", vixi.mode());
+    }
+
+    #[test]
     fn to_op_pending() {
         let mut vixi = Vixi::new();
         vixi.process("d");
+        assert_eq!("Pending", vixi.mode());
+    }
+
+    #[test]
+    fn to_op_pending_with_count() {
+        let mut vixi = Vixi::new();
+        vixi.process("123d");
         assert_eq!("Pending", vixi.mode());
     }
 

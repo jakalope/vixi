@@ -7,14 +7,18 @@ use disambiguation_map::{DisambiguationMap, Match};
 use ordered_vec_map::InsertionResult;
 use std::cmp::min;
 use std::ops::Range;
-use typeahead::{Numeric, Typeahead, RemapType};
+use typeahead::{Parse, Typeahead, RemapType};
 
-impl Numeric for u8 {
+impl Parse for u8 {
     fn decimal(&self) -> Option<char> {
         match *self {
             b'0'...b'9' => Some(*self as char),
             _ => None,
         }
+    }
+
+    fn character(&self) -> Option<char> {
+        Some(*self as char)
     }
 }
 
@@ -29,7 +33,7 @@ pub struct ModeMap<K, Op>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
     Op: Copy,
 {
     remap_map: DisambiguationMap<K, Vec<K>>,
@@ -40,7 +44,7 @@ impl<K, Op> ModeMap<K, Op>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
     Op: Copy,
 {
     pub fn new() -> Self {
@@ -51,7 +55,7 @@ where
     }
 
     /// Process a typeahead buffer.
-    /// Numeric string prefixes are managed by each mode after this method.
+    /// Parse string prefixes are managed by each mode after this method.
     pub fn process(&self, typeahead: &mut Typeahead<K>) -> Result<Op, MapErr> {
         // Grab keys from the front of the queue, looking for matches.
         let mut i: i32 = 0;

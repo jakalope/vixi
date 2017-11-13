@@ -160,6 +160,10 @@ pub fn insert_mode_map() -> ModeMap<MultiKey, InsertOp> {
     use op::InsertOp::*;
     let mut map = ModeMap::new();
     map.insert_op(parse("<Esc>"), Cancel);
+    map.insert_op(parse("<Up>"), Up);
+    map.insert_op(parse("<Down>"), Down);
+    map.insert_op(parse("<Left>"), Left);
+    map.insert_op(parse("<Right>"), Right);
     return map;
 }
 

@@ -2,19 +2,19 @@ use mode::*;
 use mode_map::MapErr;
 use op::PendingOp;
 use state::State;
-use typeahead::Numeric;
+use typeahead::Parse;
 use disambiguation_map::Match;
 
 impl<K> PendingMode<K>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
 {
-    fn next_mode(&self, count: i32) -> Mode<K> {
+    fn next_mode(&self) -> Mode<K> {
         match self.next_mode {
             NextMode::Insert => insert(),
-            NextMode::Normal => normal(count),
+            NextMode::Normal => normal(),
         }
     }
 }
@@ -23,7 +23,7 @@ impl<K> Transition<K> for PendingMode<K>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
 {
     fn name(&self) -> &'static str {
         "Pending"
@@ -41,8 +41,8 @@ where
                 match state.typeahead.parse_decimal() {
                     Match::FullMatch(n) => {
                         // Update count and stay in same mode.
-                        // TODO Don't stop processing.
-                        return pending(self.next_mode, n);
+                        state.count *= n;
+                        return self.transition(state);
                     }
                     Match::PartialMatch => {
                         return recast_pending(self);
@@ -64,20 +64,20 @@ where
                     }
                     PendingOp::Operator(o) => {
                         // TODO Perform operation over [motion].
-                        return self.next_mode(self.count);
+                        return self.next_mode();
                     }
                     PendingOp::Motion(m) => {
                         // TODO Perform operation over [motion].
-                        return self.next_mode(self.count);
+                        return self.next_mode();
                     }
                     PendingOp::Object(o) => {
                         // TODO Perform operation over [object].
-                        return self.next_mode(self.count);
+                        return self.next_mode();
                     }
                 }
             }
         };
         // Go back to whence you came.
-        self.next_mode(self.count)
+        self.next_mode()
     }
 }

@@ -2,13 +2,13 @@ use mode::{Mode, normal, Transition};
 use mode_map::ModeMap;
 use op::{InsertOp, PendingOp, NormalOp};
 use state::State;
-use typeahead::{Numeric, RemapType};
+use typeahead::{Parse, RemapType};
 
 pub struct StateMachine<K>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
 {
     state: State<K>,
     mode: Mode<K>,
@@ -18,7 +18,7 @@ impl<K> StateMachine<K>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
 {
     pub fn with_maps(
         normal_map: ModeMap<K, NormalOp>,
@@ -27,7 +27,7 @@ where
     ) -> Self {
         StateMachine {
             state: State::with_maps(normal_map, pending_map, insert_map),
-            mode: normal(1),
+            mode: normal(),
         }
     }
 

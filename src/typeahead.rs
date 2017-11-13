@@ -3,8 +3,9 @@ use std::collections::vec_deque::{Drain, Iter};
 use std::ops::Range;
 use disambiguation_map::Match;
 
-pub trait Numeric {
+pub trait Parse {
     fn decimal(&self) -> Option<char>;
+    fn character(&self) -> Option<char>;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -53,7 +54,7 @@ impl<K> Typeahead<K>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
 {
     pub fn new() -> Self {
         Typeahead { buffer: VecDeque::new() }
@@ -140,5 +141,23 @@ where
             return Match::FullMatch(s.parse::<i32>().unwrap());
         }
         return Match::PartialMatch;
+    }
+
+    pub fn parse_string(&mut self) -> String {
+        let mut s = String::with_capacity(self.len());
+        for key in self.value_iter() {
+            match key.character() {
+                Some(c) => {
+                    s.push(c);
+                }
+                None => {
+                    break;
+                }
+            }
+        }
+        for i in 0..s.len() {
+            self.pop_front();
+        }
+        return s;
     }
 }

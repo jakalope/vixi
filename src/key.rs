@@ -1,5 +1,5 @@
 use nom::IResult;
-use typeahead::Numeric;
+use typeahead::Parse;
 
 #[derive(Serialize, Deserialize, PartialOrd, Ord, Debug, Copy, Clone,
          PartialEq, Eq, Hash)]
@@ -64,7 +64,7 @@ pub enum MultiKey {
     Cmd(Key), // Apple's Command key.
 }
 
-impl Numeric for MultiKey {
+impl Parse for MultiKey {
     fn decimal(&self) -> Option<char> {
         match *self {
             MultiKey::A(Key::Char(c)) => {
@@ -74,6 +74,14 @@ impl Numeric for MultiKey {
                     return None;
                 }
             }
+            _ => None,
+        }
+    }
+
+    // TODO insert mode mappings for arrow keys and the like.
+    fn character(&self) -> Option<char> {
+        match *self {
+            MultiKey::A(Key::Char(c)) => Some(c),
             _ => None,
         }
     }

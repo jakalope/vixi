@@ -3,13 +3,13 @@ use mode::*;
 use mode_map::MapErr;
 use op::NormalOp;
 use state::State;
-use typeahead::Numeric;
+use typeahead::Parse;
 
 impl<K> Transition<K> for NormalMode<K>
 where
     K: Ord,
     K: Copy,
-    K: Numeric,
+    K: Parse,
 {
     fn name(&self) -> &'static str {
         "Normal"
@@ -27,8 +27,8 @@ where
                 match state.typeahead.parse_decimal() {
                     Match::FullMatch(n) => {
                         // Update count and stay in same mode.
-                        // TODO Don't stop processing.
-                        return normal(n);
+                        state.count = n;
+                        return self.transition(state);
                     }
                     Match::PartialMatch => {
                         return recast_normal(self);
@@ -57,7 +57,7 @@ where
                     NormalOp::Operator(o) => {
                         // TODO
                         // Enter operator pending mode.
-                        return pending(NextMode::Normal, self.count);
+                        return pending(NextMode::Normal);
                     }
                     NormalOp::Motion(m) => {
                         // TODO
@@ -66,6 +66,6 @@ where
             }
         };
         // Stay in normal mode.
-        normal(self.count)
+        normal()
     }
 }
