@@ -2,6 +2,7 @@ use key::MultiKey;
 use key::parse::parse;
 use state_machine::StateMachine;
 use maps::{normal_mode_map, insert_mode_map, pending_mode_map};
+use serde_json::Value;
 
 pub struct Vixi {
     machine: StateMachine<MultiKey>,
@@ -18,10 +19,11 @@ impl Vixi {
         }
     }
 
-    pub fn process(&mut self, keys: &str) {
+    pub fn process(&mut self, keys: &str) -> Vec<Value> {
         for key in parse(keys) {
             self.machine.process(key);
         }
+        return self.machine.outgoing();
     }
 
     pub fn mode(&self) -> &'static str {

@@ -1,5 +1,8 @@
 use ordered_vec_map::InsertionResult;
 
+// See https://github.com/google/xi-editor/blob/e555955bd8b711dd257f66b6d4b0911d6360c8d7/rust/core-lib/src/editor.rs#L952-L1009
+// for Xi command list.
+
 pub trait HasOperator<K> {
     fn insert_operator(
         &mut self,

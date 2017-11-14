@@ -3,6 +3,7 @@ use mode_map::ModeMap;
 use op::{InsertOp, PendingOp, NormalOp};
 use state::State;
 use typeahead::{Parse, RemapType};
+use serde_json::Value;
 
 pub struct StateMachine<K>
 where
@@ -38,5 +39,9 @@ where
 
     pub fn mode(&self) -> &'static str {
         self.mode.name()
+    }
+
+    pub fn outgoing(&mut self) -> Vec<Value> {
+        return self.state.outgoing();
     }
 }

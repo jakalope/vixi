@@ -18,8 +18,11 @@ where
         match state.insert_mode_map.process(&mut state.typeahead) {
             Err(MapErr::NoMatch) => {
                 // In Insert mode, unmatched typeahead gets inserted.
-                // TODO send string to Xi.
-                println!("{}", state.typeahead.parse_string());
+                // TODO respect self.replace_mode
+                let json = json!({
+                    "insert": { "chars": state.typeahead.parse_string() }
+                });
+                state.send(json);
             } 
             Err(MapErr::InfiniteRecursion) => {
                 // TODO Tell the user they've created an infinite remap loop.
