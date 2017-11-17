@@ -10,8 +10,7 @@ where
     C: client::Client,
     C: Clone,
 {
-    client: C,
-    machine: StateMachine<MultiKey>,
+    machine: StateMachine<C, MultiKey>,
 }
 
 impl<C> Vixi<C>
@@ -21,8 +20,8 @@ where
 {
     pub fn new(client: C) -> Self {
         Vixi {
-            client: client,
-            machine: StateMachine::with_maps(
+            machine: StateMachine::new(
+                client,
                 normal_mode_map(),
                 pending_mode_map(),
                 insert_mode_map(),
@@ -30,11 +29,10 @@ where
         }
     }
 
-    pub fn process(&mut self, keys: &str) -> Vec<Value> {
+    pub fn process(&mut self, keys: &str) {
         for key in parse(keys) {
             self.machine.process(key);
         }
-        return self.machine.outgoing();
     }
 
     pub fn mode(&self) -> &'static str {

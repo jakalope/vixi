@@ -4,41 +4,47 @@ use op::{NormalOp, PendingOp, InsertOp};
 use typeahead::{Parse, RemapType, Typeahead};
 use serde_json::Value;
 use std::mem::swap;
+use client;
 
-pub struct State<K>
+pub struct State<C, K>
 where
+    C: client::Client,
+    C: Clone,
     K: Ord,
     K: Copy,
     K: Parse,
 {
+    pub client: C,
     pub typeahead: Typeahead<K>,
     pub normal_mode_map: ModeMap<K, NormalOp>,
     pub pending_mode_map: ModeMap<K, PendingOp>,
     pub insert_mode_map: ModeMap<K, InsertOp>,
     pub count: i32, // Used when an op is to be performed [count] times.
-
-    // Outgoing JSON commands.
-    outgoing: Vec<Value>,
+    pub view_id: String,
 }
 
-impl<K> State<K>
+impl<C, K> State<C, K>
 where
+    C: client::Client,
+    C: Clone,
     K: Ord,
     K: Copy,
     K: Parse,
 {
-    pub fn with_maps(
+    pub fn new(
+        client: C,
         normal_map: ModeMap<K, NormalOp>,
         pending_map: ModeMap<K, PendingOp>,
         insert_map: ModeMap<K, InsertOp>,
     ) -> Self {
         State {
+            client: client,
             typeahead: Typeahead::<K>::new(),
             normal_mode_map: normal_map,
             pending_mode_map: pending_map,
             insert_mode_map: insert_map,
             count: 1,
-            outgoing: Vec::new(),
+            view_id: String::new(),
         }
     }
 
@@ -51,18 +57,5 @@ where
     pub fn cancel(&mut self) {
         self.count = 1;
         self.typeahead.clear();
-    }
-
-    /// Add an outgoing JSON object, to be consumed by a call to
-    /// `outgoing()`.
-    pub fn send(&mut self, s: Value) {
-        self.outgoing.push(s);
-    }
-
-    /// Consume outgoing JSON objects, intended for publication to Xi.
-    pub fn outgoing(&mut self) -> Vec<Value> {
-        let mut v = Vec::new();
-        swap(&mut self.outgoing, &mut v);
-        return v;
     }
 }

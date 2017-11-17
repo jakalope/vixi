@@ -2,15 +2,18 @@ use mode_map::MapErr;
 use state::State;
 use std::marker::PhantomData;
 use typeahead::Parse;
+use client;
 
-pub trait Transition<K>
+pub trait Transition<C, K>
 where
+    C: client::Client,
+    C: Clone,
     K: Ord,
     K: Copy,
     K: Parse,
 {
     fn name(&self) -> &'static str;
-    fn transition(&self, state: &mut State<K>) -> Mode<K>;
+    fn transition(&self, state: &mut State<C, K>) -> Mode<K>;
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -80,8 +83,10 @@ pub fn replace<K>() -> Mode<K> {
     })
 }
 
-impl<K> Transition<K> for Mode<K>
+impl<C, K> Transition<C, K> for Mode<K>
 where
+    C: client::Client,
+    C: Clone,
     K: Ord,
     K: Copy,
     K: Parse,
@@ -94,7 +99,7 @@ where
         }
     }
 
-    fn transition(&self, state: &mut State<K>) -> Mode<K> {
+    fn transition(&self, state: &mut State<C, K>) -> Mode<K> {
         match *self {
             Mode::Normal(x) => x.transition(state),
             Mode::Pending(x) => x.transition(state),

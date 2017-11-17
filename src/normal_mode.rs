@@ -4,9 +4,12 @@ use mode_map::MapErr;
 use op::NormalOp;
 use state::State;
 use typeahead::Parse;
+use client;
 
-impl<K> Transition<K> for NormalMode<K>
+impl<C, K> Transition<C, K> for NormalMode<K>
 where
+    C: client::Client,
+    C: Clone,
     K: Ord,
     K: Copy,
     K: Parse,
@@ -15,7 +18,7 @@ where
         "Normal"
     }
 
-    fn transition(&self, state: &mut State<K>) -> Mode<K> {
+    fn transition(&self, state: &mut State<C, K>) -> Mode<K> {
         match state.normal_mode_map.process(&mut state.typeahead) {
             Err(MapErr::NoMatch) => {
                 // In vim, if one remaps a numeric, e.g.

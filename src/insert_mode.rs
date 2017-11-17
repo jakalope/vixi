@@ -3,9 +3,12 @@ use mode_map::MapErr;
 use op::InsertOp;
 use state::State;
 use typeahead::Parse;
+use client;
 
-impl<K> Transition<K> for InsertMode<K>
+impl<C, K> Transition<C, K> for InsertMode<K>
 where
+    C: client::Client,
+    C: Clone,
     K: Ord,
     K: Copy,
     K: Parse,
@@ -14,15 +17,16 @@ where
         "Insert"
     }
 
-    fn transition(&self, state: &mut State<K>) -> Mode<K> {
+    fn transition(&self, state: &mut State<C, K>) -> Mode<K> {
         match state.insert_mode_map.process(&mut state.typeahead) {
             Err(MapErr::NoMatch) => {
                 // In Insert mode, unmatched typeahead gets inserted.
                 // TODO respect self.replace_mode
-                let json = json!({
-                    "insert": { "chars": state.typeahead.parse_string() }
-                });
-                state.send(json);
+                // TODO client.insert_newline() on <CR>
+                let string = state.typeahead.parse_string();
+                for c in string.chars() {
+                    state.client.char(&state.view_id, c);
+                }
             } 
             Err(MapErr::InfiniteRecursion) => {
                 // TODO Tell the user they've created an infinite remap loop.

@@ -4,6 +4,7 @@ use op::PendingOp;
 use state::State;
 use typeahead::Parse;
 use disambiguation_map::Match;
+use client;
 
 impl<K> PendingMode<K>
 where
@@ -19,8 +20,10 @@ where
     }
 }
 
-impl<K> Transition<K> for PendingMode<K>
+impl<C, K> Transition<C, K> for PendingMode<K>
 where
+    C: client::Client,
+    C: Clone,
     K: Ord,
     K: Copy,
     K: Parse,
@@ -29,7 +32,7 @@ where
         "Pending"
     }
 
-    fn transition(&self, state: &mut State<K>) -> Mode<K> {
+    fn transition(&self, state: &mut State<C, K>) -> Mode<K> {
         match state.pending_mode_map.process(&mut state.typeahead) {
             Err(MapErr::NoMatch) => {
                 // In vim, if one remaps a numeric, e.g.

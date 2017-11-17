@@ -4,30 +4,36 @@ use op::{InsertOp, PendingOp, NormalOp};
 use state::State;
 use typeahead::{Parse, RemapType};
 use serde_json::Value;
+use client;
 
-pub struct StateMachine<K>
+pub struct StateMachine<C, K>
 where
+    C: client::Client,
+    C: Clone,
     K: Ord,
     K: Copy,
     K: Parse,
 {
-    state: State<K>,
+    state: State<C, K>,
     mode: Mode<K>,
 }
 
-impl<K> StateMachine<K>
+impl<C, K> StateMachine<C, K>
 where
+    C: client::Client,
+    C: Clone,
     K: Ord,
     K: Copy,
     K: Parse,
 {
-    pub fn with_maps(
+    pub fn new(
+        client: C,
         normal_map: ModeMap<K, NormalOp>,
         pending_map: ModeMap<K, PendingOp>,
         insert_map: ModeMap<K, InsertOp>,
     ) -> Self {
         StateMachine {
-            state: State::with_maps(normal_map, pending_map, insert_map),
+            state: State::new(client, normal_map, pending_map, insert_map),
             mode: normal(),
         }
     }
@@ -39,9 +45,5 @@ where
 
     pub fn mode(&self) -> &'static str {
         self.mode.name()
-    }
-
-    pub fn outgoing(&mut self) -> Vec<Value> {
-        return self.state.outgoing();
     }
 }
