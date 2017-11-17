@@ -82,6 +82,7 @@ impl Parse for MultiKey {
     fn character(&self) -> Option<char> {
         match *self {
             MultiKey::A(Key::Char(c)) => Some(c),
+            MultiKey::A(Key::KeypadEnter) => Some('\r'),
             _ => None,
         }
     }

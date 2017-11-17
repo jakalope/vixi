@@ -19,10 +19,12 @@ where
             Err(MapErr::NoMatch) => {
                 // In Insert mode, unmatched typeahead gets inserted.
                 // TODO respect self.replace_mode
-                let json = json!({
-                    "insert": { "chars": state.typeahead.parse_string() }
-                });
-                state.send(json);
+                // TODO use state.client.insert_newline() for <CR>
+                let string = state.typeahead.parse_string();
+                for c in string.chars() {
+                    // TODO handle failure
+                    state.client.char(&state.view_id, c);
+                }
             } 
             Err(MapErr::InfiniteRecursion) => {
                 // TODO Tell the user they've created an infinite remap loop.
