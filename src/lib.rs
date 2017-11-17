@@ -10,7 +10,10 @@ extern crate serde_derive;
 extern crate nom;
 
 extern crate regex;
+extern crate xrl;
+extern crate futures;
 
+mod client;
 mod disambiguation_map;
 mod insert_mode;
 mod key;
@@ -24,5 +27,6 @@ mod pending_mode;
 mod state;
 mod state_machine;
 mod typeahead;
+
 
 pub mod vixi;
