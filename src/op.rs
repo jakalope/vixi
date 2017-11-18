@@ -49,6 +49,8 @@ pub enum MotionOp {
     PageUp,
     PageDown,
     Backspace,
+    Home,
+    End,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -111,6 +113,8 @@ pub enum InsertOp {
     PageUp,
     PageDown,
     Backspace,
+    Home,
+    End,
     Delete,
     DeleteWord, // (Ctrl-W).
     DeleteLine, // (Ctrl-U).

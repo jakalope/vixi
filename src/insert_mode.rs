@@ -58,6 +58,12 @@ where
                     InsertOp::Right => {
                         state.client.right(&state.view_id);
                     }
+                    InsertOp::Home => {
+                        // TODO
+                    }
+                    InsertOp::End => {
+                        // TODO
+                    }
                     InsertOp::PageUp => {
                         state.client.page_up(&state.view_id);
                     }

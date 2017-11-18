@@ -38,7 +38,7 @@ mod test {
 
     #[test]
     fn start_in_normal() {
-        let mut vixi = Vixi::new(Box::new(client::DummyClient::new()));
+        let vixi = Vixi::new(Box::new(client::DummyClient::new()));
         assert_eq!("Normal", vixi.mode());
     }
 

@@ -97,9 +97,15 @@ where
     map.insert_motion(parse("gg"), Top);
     map.insert_motion(parse("G"), Bottom);
     map.insert_motion(parse("w"), Word);
+    map.insert_motion(parse("<bs>"), Backspace);
+    map.insert_motion(parse("<home>"), Home);
+    map.insert_motion(parse("<end>"), End);
+    map.insert_motion(parse("<khome>"), Home);
+    map.insert_motion(parse("<kend>"), End);
     map.insert_motion(parse("<pageup>"), PageUp);
     map.insert_motion(parse("<pagedown>"), PageDown);
-    map.insert_motion(parse("<bs>"), Backspace);
+    map.insert_motion(parse("<kpageUp>"), PageUp);
+    map.insert_motion(parse("<kpageDown>"), PageDown);
 }
 
 fn add_objects<Op>(map: &mut ModeMap<MultiKey, Op>)
@@ -173,10 +179,16 @@ pub fn insert_mode_map() -> ModeMap<MultiKey, InsertOp> {
     map.insert_op(parse("<Down>"), Down);
     map.insert_op(parse("<Left>"), Left);
     map.insert_op(parse("<Right>"), Right);
-    map.insert_op(parse("<PageUp>"), PageUp);
-    map.insert_op(parse("<PageDown>"), PageDown);
     map.insert_op(parse("<Backspace>"), Backspace);
     map.insert_op(parse("<Delete>"), Delete);
+    map.insert_op(parse("<PageUp>"), PageUp);
+    map.insert_op(parse("<PageDown>"), PageDown);
+    map.insert_op(parse("<kpageUp>"), PageUp);
+    map.insert_op(parse("<kpageDown>"), PageDown);
+    map.insert_op(parse("<home>"), Home);
+    map.insert_op(parse("<end>"), End);
+    map.insert_op(parse("<khome>"), Home);
+    map.insert_op(parse("<kend>"), End);
     map.insert_op(parse("<C-w>"), DeleteWord); // (Ctrl-W));
     map.insert_op(parse("<C-u>"), DeleteLine); // (Ctrl-U));
     map.insert_op(parse("<Tab>"), Tab);
