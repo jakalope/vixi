@@ -1,11 +1,18 @@
 use xrl;
 use xrl::{ClientResult, ClientError};
 use serde_json::Value;
+use serde::Serialize;
 use futures::future::{ok, err};
 
 pub trait Client {
     fn notify(&mut self, method: &str, params: Value) -> ClientResult<()>;
     fn request(&mut self, method: &str, params: Value) -> ClientResult<Value>;
+    fn edit(
+        &mut self,
+        view_id: &str,
+        method: &str,
+        params: Option<Value>,
+    ) -> ClientResult<()>;
     fn scroll(
         &mut self,
         view_id: &str,
@@ -20,6 +27,8 @@ pub trait Client {
     fn up_sel(&mut self, view_id: &str) -> ClientResult<()>;
     fn down(&mut self, view_id: &str) -> ClientResult<()>;
     fn down_sel(&mut self, view_id: &str) -> ClientResult<()>;
+    fn delete(&mut self, view_id: &str) -> ClientResult<()>;
+    fn backspace(&mut self, view_id: &str) -> ClientResult<()>;
     fn del(&mut self, view_id: &str) -> ClientResult<()>;
     fn page_up(&mut self, view_id: &str) -> ClientResult<()>;
     fn page_up_sel(&mut self, view_id: &str) -> ClientResult<()>;
@@ -63,6 +72,14 @@ impl Client for xrl::Client {
     fn request(&mut self, method: &str, params: Value) -> ClientResult<Value> {
         self.request(method, params)
     }
+    fn edit(
+        &mut self,
+        view_id: &str,
+        method: &str,
+        params: Option<Value>,
+    ) -> ClientResult<()> {
+        self.edit(view_id, method, params)
+    }
     fn scroll(
         &mut self,
         view_id: &str,
@@ -94,6 +111,12 @@ impl Client for xrl::Client {
     }
     fn down_sel(&mut self, view_id: &str) -> ClientResult<()> {
         self.down_sel(view_id)
+    }
+    fn delete(&mut self, view_id: &str) -> ClientResult<()> {
+        self.delete(view_id)
+    }
+    fn backspace(&mut self, view_id: &str) -> ClientResult<()> {
+        self.backspace(view_id)
     }
     fn del(&mut self, view_id: &str) -> ClientResult<()> {
         self.del(view_id)
@@ -183,6 +206,14 @@ impl Client for DummyClient {
     fn request(&mut self, method: &str, params: Value) -> ClientResult<Value> {
         Box::new(ok(json!({})))
     }
+    fn edit(
+        &mut self,
+        view_id: &str,
+        method: &str,
+        params: Option<Value>,
+    ) -> ClientResult<()> {
+        Box::new(ok(()))
+    }
     fn scroll(
         &mut self,
         view_id: &str,
@@ -213,6 +244,12 @@ impl Client for DummyClient {
         Box::new(ok(()))
     }
     fn down_sel(&mut self, view_id: &str) -> ClientResult<()> {
+        Box::new(ok(()))
+    }
+    fn delete(&mut self, view_id: &str) -> ClientResult<()> {
+        Box::new(ok(()))
+    }
+    fn backspace(&mut self, view_id: &str) -> ClientResult<()> {
         Box::new(ok(()))
     }
     fn del(&mut self, view_id: &str) -> ClientResult<()> {
