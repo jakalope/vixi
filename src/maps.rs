@@ -86,6 +86,10 @@ where
     ModeMap<MultiKey, Op>: HasMotion<MultiKey>,
 {
     use op::MotionOp::*;
+    map.insert_motion(parse("<left>"), Left);
+    map.insert_motion(parse("<right>"), Right);
+    map.insert_motion(parse("<up>"), Up);
+    map.insert_motion(parse("<down>"), Down);
     map.insert_motion(parse("h"), Left);
     map.insert_motion(parse("l"), Right);
     map.insert_motion(parse("k"), Up);
@@ -93,6 +97,10 @@ where
     map.insert_motion(parse("gg"), Top);
     map.insert_motion(parse("G"), Bottom);
     map.insert_motion(parse("w"), Word);
+    map.insert_motion(parse("<pageup>"), PageUp);
+    map.insert_motion(parse("<pagedown>"), PageDown);
+    map.insert_motion(parse("<bs>"), Backspace);
+    map.insert_motion(parse("<del>"), Delete);
 }
 
 fn add_objects<Op>(map: &mut ModeMap<MultiKey, Op>)
@@ -166,6 +174,16 @@ pub fn insert_mode_map() -> ModeMap<MultiKey, InsertOp> {
     map.insert_op(parse("<Down>"), Down);
     map.insert_op(parse("<Left>"), Left);
     map.insert_op(parse("<Right>"), Right);
+    map.insert_op(parse("<PageUp>"), PageUp);
+    map.insert_op(parse("<PageDown>"), PageDown);
+    map.insert_op(parse("<Backspace>"), Backspace);
+    map.insert_op(parse("<Delete>"), Delete);
+    map.insert_op(parse("<C-w>"), DeleteWord); // (Ctrl-W));
+    map.insert_op(parse("<C-u>"), DeleteLine); // (Ctrl-U));
+    map.insert_op(parse("<Tab>"), Tab);
+    map.insert_op(parse("<C-k>"), Digraph); // (Ctrl-K));
+    map.insert_op(parse("<C-r>"), InsertRegister); // (Ctrl-R));
+    map.insert_op(parse("<C-r><C-r>"), InsertRegisterContents); // (Ctrl-R Ctrl-R));
     return map;
 }
 

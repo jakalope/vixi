@@ -46,6 +46,10 @@ pub enum MotionOp {
     Top, // gg
     Bottom, // G
     Word, // w
+    PageUp,
+    PageDown,
+    Backspace,
+    Delete,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

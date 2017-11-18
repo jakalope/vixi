@@ -4,35 +4,22 @@ use typeahead::Parse;
 #[derive(Serialize, Deserialize, PartialOrd, Ord, Debug, Copy, Clone,
          PartialEq, Eq, Hash)]
 pub enum Key {
-    /// Backspace.
     Backspace,
-    /// Left arrow.
     Left,
-    /// Right arrow.
     Right,
-    /// Up arrow.
     Up,
-    /// Down arrow.
     Down,
-    /// Home key.
     Home,
-    /// End key.
     End,
-    /// Page Up key.
     PageUp,
-    /// Page Down key.
     PageDown,
-    /// Delete key.
     Delete,
-    /// Insert key.
     Insert,
     /// Function keys.
     F(u8),
     /// Normal character.
     Char(char),
-    /// Null byte.
     Null,
-    /// Esc key.
     Esc,
     Space,
     Tab,
@@ -41,6 +28,7 @@ pub enum Key {
     Eol,
     Help,
     Undo,
+    /// Keypad numerics (0 - 9)
     Keypad(u8),
     KeypadHome,
     KeypadEnd,
@@ -78,7 +66,6 @@ impl Parse for MultiKey {
         }
     }
 
-    // TODO insert mode mappings for arrow keys and the like.
     fn character(&self) -> Option<char> {
         match *self {
             MultiKey::A(Key::Char(c)) => Some(c),
