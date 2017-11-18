@@ -49,7 +49,6 @@ pub enum MotionOp {
     PageUp,
     PageDown,
     Backspace,
-    Delete,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]

@@ -100,7 +100,6 @@ where
     map.insert_motion(parse("<pageup>"), PageUp);
     map.insert_motion(parse("<pagedown>"), PageDown);
     map.insert_motion(parse("<bs>"), Backspace);
-    map.insert_motion(parse("<del>"), Delete);
 }
 
 fn add_objects<Op>(map: &mut ModeMap<MultiKey, Op>)
