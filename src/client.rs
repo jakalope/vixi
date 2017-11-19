@@ -65,12 +65,25 @@ pub trait Client {
     ) -> ClientResult<()>;
 }
 
-impl Client for xrl::Client {
+#[derive(Clone)]
+pub struct XrlClient {
+    client: xrl::Client,
+}
+
+impl XrlClient {
+    pub fn new(client: xrl::Client) -> Self {
+        XrlClient {
+            client: client,
+        }
+    }
+}
+
+impl Client for XrlClient {
     fn notify(&mut self, method: &str, params: Value) -> ClientResult<()> {
-        self.notify(method, params)
+        self.client.notify(method, params)
     }
     fn request(&mut self, method: &str, params: Value) -> ClientResult<Value> {
-        self.request(method, params)
+        self.client.request(method, params)
     }
     fn edit(
         &mut self,
@@ -78,7 +91,7 @@ impl Client for xrl::Client {
         method: &str,
         params: Option<Value>,
     ) -> ClientResult<()> {
-        self.edit(view_id, method, params)
+        self.client.edit(view_id, method, params)
     }
     fn scroll(
         &mut self,
@@ -86,64 +99,64 @@ impl Client for xrl::Client {
         first_line: u64,
         last_line: u64,
     ) -> ClientResult<()> {
-        self.scroll(view_id, first_line, last_line)
+        self.client.scroll(view_id, first_line, last_line)
     }
     fn left(&mut self, view_id: &str) -> ClientResult<()> {
-        self.left(view_id)
+        self.client.left(view_id)
     }
     fn left_sel(&mut self, view_id: &str) -> ClientResult<()> {
-        self.left_sel(view_id)
+        self.client.left_sel(view_id)
     }
     fn right(&mut self, view_id: &str) -> ClientResult<()> {
-        self.right(view_id)
+        self.client.right(view_id)
     }
     fn right_sel(&mut self, view_id: &str) -> ClientResult<()> {
-        self.right_sel(view_id)
+        self.client.right_sel(view_id)
     }
     fn up(&mut self, view_id: &str) -> ClientResult<()> {
-        self.up(view_id)
+        self.client.up(view_id)
     }
     fn up_sel(&mut self, view_id: &str) -> ClientResult<()> {
-        self.up_sel(view_id)
+        self.client.up_sel(view_id)
     }
     fn down(&mut self, view_id: &str) -> ClientResult<()> {
-        self.down(view_id)
+        self.client.down(view_id)
     }
     fn down_sel(&mut self, view_id: &str) -> ClientResult<()> {
-        self.down_sel(view_id)
+        self.client.down_sel(view_id)
     }
     fn delete(&mut self, view_id: &str) -> ClientResult<()> {
-        self.delete(view_id)
+        self.client.delete(view_id)
     }
     fn backspace(&mut self, view_id: &str) -> ClientResult<()> {
-        self.backspace(view_id)
+        self.client.backspace(view_id)
     }
     fn del(&mut self, view_id: &str) -> ClientResult<()> {
-        self.del(view_id)
+        self.client.del(view_id)
     }
     fn page_up(&mut self, view_id: &str) -> ClientResult<()> {
-        self.page_up(view_id)
+        self.client.page_up(view_id)
     }
     fn page_up_sel(&mut self, view_id: &str) -> ClientResult<()> {
-        self.page_up_sel(view_id)
+        self.client.page_up_sel(view_id)
     }
     fn page_down(&mut self, view_id: &str) -> ClientResult<()> {
-        self.page_down(view_id)
+        self.client.page_down(view_id)
     }
     fn page_down_sel(&mut self, view_id: &str) -> ClientResult<()> {
-        self.page_down_sel(view_id)
+        self.client.page_down_sel(view_id)
     }
     fn insert_newline(&mut self, view_id: &str) -> ClientResult<()> {
-        self.insert_newline(view_id)
+        self.client.insert_newline(view_id)
     }
     fn f1(&mut self, view_id: &str) -> ClientResult<()> {
-        self.f1(view_id)
+        self.client.f1(view_id)
     }
     fn f2(&mut self, view_id: &str) -> ClientResult<()> {
-        self.f2(view_id)
+        self.client.f2(view_id)
     }
     fn char(&mut self, view_id: &str, ch: char) -> ClientResult<()> {
-        self.char(view_id, ch)
+        self.client.char(view_id, ch)
     }
     fn click(
         &mut self,
@@ -151,7 +164,7 @@ impl Client for xrl::Client {
         line: u64,
         column: u64,
     ) -> ClientResult<()> {
-        self.click(view_id, line, column)
+        self.client.click(view_id, line, column)
     }
     fn drag(
         &mut self,
@@ -159,25 +172,25 @@ impl Client for xrl::Client {
         line: u64,
         column: u64,
     ) -> ClientResult<()> {
-        self.drag(view_id, line, column)
+        self.client.drag(view_id, line, column)
     }
     fn new_view(&mut self, file_path: Option<String>) -> ClientResult<String> {
-        self.new_view(file_path)
+        self.client.new_view(file_path)
     }
     fn close_view(&mut self, view_id: &str) -> ClientResult<()> {
-        self.close_view(view_id)
+        self.client.close_view(view_id)
     }
     fn save(&mut self, view_id: &str, file_path: &str) -> ClientResult<()> {
-        self.save(view_id, file_path)
+        self.client.save(view_id, file_path)
     }
     fn set_theme(&mut self, theme: &str) -> ClientResult<()> {
-        self.set_theme(theme)
+        self.client.set_theme(theme)
     }
     fn start_plugin(&mut self, view_id: &str, name: &str) -> ClientResult<()> {
-        self.start_plugin(view_id, name)
+        self.client.start_plugin(view_id, name)
     }
     fn stop_plugin(&mut self, view_id: &str, name: &str) -> ClientResult<()> {
-        self.stop_plugin(view_id, name)
+        self.client.stop_plugin(view_id, name)
     }
     fn notify_plugin(
         &mut self,
@@ -186,7 +199,7 @@ impl Client for xrl::Client {
         method: &str,
         params: Value,
     ) -> ClientResult<()> {
-        self.notify_plugin(view_id, plugin, method, params)
+        self.client.notify_plugin(view_id, plugin, method, params)
     }
 }
 

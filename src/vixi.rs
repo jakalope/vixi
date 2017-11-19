@@ -1,8 +1,8 @@
 use client;
+use maps;
 use key::MultiKey;
 use key::parse::parse;
 use state_machine::StateMachine;
-use maps::{normal_mode_map, insert_mode_map, pending_mode_map};
 use serde_json::Value;
 
 pub struct Vixi {
@@ -14,9 +14,9 @@ impl Vixi {
         Vixi {
             machine: StateMachine::new(
                 client,
-                normal_mode_map(),
-                pending_mode_map(),
-                insert_mode_map(),
+                maps::normal_mode_map(),
+                maps::pending_mode_map(),
+                maps::insert_mode_map(),
             ),
         }
     }
