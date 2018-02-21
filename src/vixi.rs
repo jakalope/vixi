@@ -3,7 +3,6 @@ use maps;
 use key::MultiKey;
 use key::parse::parse;
 use state_machine::StateMachine;
-use serde_json::Value;
 
 pub struct Vixi {
     machine: StateMachine<MultiKey>,

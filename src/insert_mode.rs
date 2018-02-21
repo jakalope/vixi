@@ -3,7 +3,6 @@ use mode_map::MapErr;
 use op::InsertOp;
 use state::State;
 use typeahead::Parse;
-use serde_json::Value;
 
 impl<K> Transition<K> for InsertMode<K>
 where
@@ -24,10 +23,8 @@ where
                 for c in string.chars() {
                     // TODO handle failure
                     let result = match c {
-                        '\n' | '\r' => {
-                            state.client.insert_newline(&state.view_id)
-                        }
-                        _ => state.client.char(&state.view_id, c),
+                        '\n' | '\r' => state.client.insert_newline(state.view_id),
+                        _ => state.client.char(state.view_id, c),
                     };
                 }
             } 
@@ -44,49 +41,50 @@ where
                         state.cancel();
                         return normal();
                     }
-                    // TODO
                     // TODO handle errors
                     InsertOp::Up => {
-                        state.client.up(&state.view_id);
+                        state.client.up(state.view_id);
                     }
                     InsertOp::Down => {
-                        state.client.down(&state.view_id);
+                        state.client.down(state.view_id);
                     }
                     InsertOp::Left => {
-                        state.client.left(&state.view_id);
+                        state.client.left(state.view_id);
                     }
                     InsertOp::Right => {
-                        state.client.right(&state.view_id);
+                        state.client.right(state.view_id);
                     }
                     InsertOp::Home => {
-                        // TODO
+                        // TODO add support in Xi
+                        state.client.move_home(state.view_id);
                     }
                     InsertOp::End => {
-                        // TODO
+                        // TODO add support in Xi
+                        state.client.move_end(state.view_id);
                     }
                     InsertOp::PageUp => {
-                        state.client.page_up(&state.view_id);
+                        state.client.page_up(state.view_id);
                     }
                     InsertOp::PageDown => {
-                        state.client.page_down(&state.view_id);
+                        state.client.page_down(state.view_id);
                     }
                     InsertOp::Backspace => {
-                        state.client.backspace(&state.view_id);
+                        state.client.backspace(state.view_id);
                     }
                     InsertOp::Delete => {
-                        state.client.delete(&state.view_id);
+                        state.client.delete(state.view_id);
                     }
                     InsertOp::DeleteWord => {
                         // TODO Delete backwards till whitespace or beginning of
                         // line.
-                        state.client.down(&state.view_id);
+                        state.client.down(state.view_id);
                     }
                     InsertOp::DeleteLine => {
                         // TODO Delete backwards till beginning of line.
-                        state.client.down(&state.view_id);
+                        state.client.down(state.view_id);
                     }
                     InsertOp::Tab => {
-                        state.client.char(&state.view_id, '\t');
+                        state.client.char(state.view_id, '\t');
                     }
                     InsertOp::Digraph => {
                         // TODO

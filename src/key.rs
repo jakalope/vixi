@@ -1,8 +1,7 @@
 use nom::IResult;
 use typeahead::Parse;
 
-#[derive(Serialize, Deserialize, PartialOrd, Ord, Debug, Copy, Clone,
-         PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, PartialOrd, Ord, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Key {
     Backspace,
     Left,
@@ -42,8 +41,7 @@ pub enum Key {
     KeypadDot,
 }
 
-#[derive(Serialize, Deserialize, PartialOrd, Ord, Debug, Copy, Clone,
-         PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, PartialOrd, Ord, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum MultiKey {
     A(Key), // A single keystroke.
     Shift(Key),
@@ -168,7 +166,6 @@ pub fn parse_any(buffer: &str) -> Option<Key> {
 #[macro_use]
 pub mod parse {
     use super::*;
-    use key::Key::*;
     use key::MultiKey::*;
 
     named!(

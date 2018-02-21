@@ -1,58 +1,36 @@
-use disambiguation_map::Match;
 use key::parse::parse;
-use key::{MultiKey, Key};
+use key::MultiKey;
 use mode_map::ModeMap;
-use op::{HasOperator, HasMotion, HasObject, PendingOp, ObjectOp, MotionOp,
-         InsertOp, NormalOp, OperatorOp};
+use op::{HasOperator, HasMotion, HasObject, PendingOp, ObjectOp, MotionOp, InsertOp, NormalOp,
+         OperatorOp};
 use ordered_vec_map::InsertionResult;
-use typeahead::{RemapType, Typeahead};
 
 impl HasOperator<MultiKey> for ModeMap<MultiKey, NormalOp> {
-    fn insert_operator(
-        &mut self,
-        key: Vec<MultiKey>,
-        op: OperatorOp,
-    ) -> InsertionResult {
+    fn insert_operator(&mut self, key: Vec<MultiKey>, op: OperatorOp) -> InsertionResult {
         self.insert_op(key, NormalOp::Operator(op))
     }
 }
 
 impl HasMotion<MultiKey> for ModeMap<MultiKey, NormalOp> {
-    fn insert_motion(
-        &mut self,
-        key: Vec<MultiKey>,
-        op: MotionOp,
-    ) -> InsertionResult {
+    fn insert_motion(&mut self, key: Vec<MultiKey>, op: MotionOp) -> InsertionResult {
         self.insert_op(key, NormalOp::Motion(op))
     }
 }
 
 impl HasOperator<MultiKey> for ModeMap<MultiKey, PendingOp> {
-    fn insert_operator(
-        &mut self,
-        key: Vec<MultiKey>,
-        op: OperatorOp,
-    ) -> InsertionResult {
+    fn insert_operator(&mut self, key: Vec<MultiKey>, op: OperatorOp) -> InsertionResult {
         self.insert_op(key, PendingOp::Operator(op))
     }
 }
 
 impl HasMotion<MultiKey> for ModeMap<MultiKey, PendingOp> {
-    fn insert_motion(
-        &mut self,
-        key: Vec<MultiKey>,
-        op: MotionOp,
-    ) -> InsertionResult {
+    fn insert_motion(&mut self, key: Vec<MultiKey>, op: MotionOp) -> InsertionResult {
         self.insert_op(key, PendingOp::Motion(op))
     }
 }
 
 impl HasObject<MultiKey> for ModeMap<MultiKey, PendingOp> {
-    fn insert_object(
-        &mut self,
-        key: Vec<MultiKey>,
-        op: ObjectOp,
-    ) -> InsertionResult {
+    fn insert_object(&mut self, key: Vec<MultiKey>, op: ObjectOp) -> InsertionResult {
         self.insert_op(key, PendingOp::Object(op))
     }
 }

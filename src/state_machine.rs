@@ -3,7 +3,6 @@ use mode_map::ModeMap;
 use op::{InsertOp, PendingOp, NormalOp};
 use state::State;
 use typeahead::{Parse, RemapType};
-use serde_json::Value;
 use client;
 
 pub struct StateMachine<K>

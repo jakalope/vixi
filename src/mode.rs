@@ -1,4 +1,3 @@
-use mode_map::MapErr;
 use state::State;
 use std::marker::PhantomData;
 use typeahead::Parse;

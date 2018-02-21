@@ -1,10 +1,8 @@
-use disambiguation_map::Match;
 use mode_map::ModeMap;
 use op::{NormalOp, PendingOp, InsertOp};
 use typeahead::{Parse, RemapType, Typeahead};
-use serde_json::Value;
-use std::mem::swap;
 use client;
+use xrl;
 
 pub struct State<K>
 where
@@ -17,7 +15,7 @@ where
     pub pending_mode_map: ModeMap<K, PendingOp>,
     pub insert_mode_map: ModeMap<K, InsertOp>,
     pub count: i32, // Used when an op is to be performed [count] times.
-    pub view_id: String,
+    pub view_id: xrl::ViewId,
     pub client: Box<client::Client>,
 }
 
@@ -39,7 +37,7 @@ where
             pending_mode_map: pending_map,
             insert_mode_map: insert_map,
             count: 1,
-            view_id: String::new(), // TODO
+            view_id: xrl::ViewId(0), // TODO pass this in
             client: client,
         }
     }
