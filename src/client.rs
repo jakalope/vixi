@@ -3,9 +3,6 @@ use xrl::{ClientResult, ViewId};
 use serde_json::Value;
 use futures::future::ok;
 
-// TODO request the following of https://github.com/google/xi-editor/blob/master/rust/core-lib/src/rpc.rs#L318
-// MoveToBeginningOfLine, MoveToEndOfLine
-
 pub trait Client {
     fn notify(&mut self, method: &str, params: Value) -> ClientResult<()>;
     fn request(&mut self, method: &str, params: Value) -> ClientResult<Value>;
@@ -19,8 +16,6 @@ pub trait Client {
     fn up_sel(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn down(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn down_sel(&mut self, view_id: ViewId) -> ClientResult<()>;
-    fn move_home(&mut self, view_id: ViewId) -> ClientResult<()>;
-    fn move_end(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn delete(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn backspace(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn del(&mut self, view_id: ViewId) -> ClientResult<()>;
@@ -28,6 +23,10 @@ pub trait Client {
     fn page_up_sel(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn page_down(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn page_down_sel(&mut self, view_id: ViewId) -> ClientResult<()>;
+    fn line_start(&mut self, view_id: ViewId) -> ClientResult<()>;
+    fn line_start_sel(&mut self, view_id: ViewId) -> ClientResult<()>;
+    fn line_end(&mut self, view_id: ViewId) -> ClientResult<()>;
+    fn line_end_sel(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn insert_newline(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn f1(&mut self, view_id: ViewId) -> ClientResult<()>;
     fn f2(&mut self, view_id: ViewId) -> ClientResult<()>;
@@ -97,12 +96,6 @@ impl Client for XrlClient {
     fn down_sel(&mut self, view_id: ViewId) -> ClientResult<()> {
         self.client.down_sel(view_id)
     }
-    fn move_home(&mut self, view_id: ViewId) -> ClientResult<()> {
-        self.client.move_home(view_id)
-    }
-    fn move_end(&mut self, view_id: ViewId) -> ClientResult<()> {
-        self.client.move_end(view_id)
-    }
     fn delete(&mut self, view_id: ViewId) -> ClientResult<()> {
         self.client.delete(view_id)
     }
@@ -123,6 +116,18 @@ impl Client for XrlClient {
     }
     fn page_down_sel(&mut self, view_id: ViewId) -> ClientResult<()> {
         self.client.page_down_sel(view_id)
+    }
+    fn line_start(&mut self, view_id: ViewId) -> ClientResult<()> {
+        self.client.line_start(view_id)
+    }
+    fn line_start_sel(&mut self, view_id: ViewId) -> ClientResult<()> {
+        self.client.line_start_sel(view_id)
+    }
+    fn line_end(&mut self, view_id: ViewId) -> ClientResult<()> {
+        self.client.line_end(view_id)
+    }
+    fn line_end_sel(&mut self, view_id: ViewId) -> ClientResult<()> {
+        self.client.line_end_sel(view_id)
     }
     fn insert_newline(&mut self, view_id: ViewId) -> ClientResult<()> {
         self.client.insert_newline(view_id)
@@ -167,7 +172,7 @@ impl Client for XrlClient {
         method: &str,
         params: Value,
     ) -> ClientResult<()> {
-        self.client.notify_plugin(view_id, plugin, method, params)
+        self.client.notify_plugin(view_id, plugin, method, &params)
     }
 }
 
@@ -217,12 +222,6 @@ impl Client for DummyClient {
     fn down_sel(&mut self, view_id: ViewId) -> ClientResult<()> {
         Box::new(ok(()))
     }
-    fn move_home(&mut self, view_id: ViewId) -> ClientResult<()> {
-        Box::new(ok(()))
-    }
-    fn move_end(&mut self, view_id: ViewId) -> ClientResult<()> {
-        Box::new(ok(()))
-    }
     fn delete(&mut self, view_id: ViewId) -> ClientResult<()> {
         Box::new(ok(()))
     }
@@ -244,6 +243,18 @@ impl Client for DummyClient {
     fn page_down_sel(&mut self, view_id: ViewId) -> ClientResult<()> {
         Box::new(ok(()))
     }
+    fn line_start(&mut self, view_id: ViewId) -> ClientResult<()> {
+        Box::new(ok(()))
+    }
+    fn line_start_sel(&mut self, view_id: ViewId) -> ClientResult<()> {
+        Box::new(ok(()))
+    }
+    fn line_end(&mut self, view_id: ViewId) -> ClientResult<()> {
+        Box::new(ok(()))
+    }
+    fn line_end_sel(&mut self, view_id: ViewId) -> ClientResult<()> {
+        Box::new(ok(()))
+    }
     fn insert_newline(&mut self, view_id: ViewId) -> ClientResult<()> {
         Box::new(ok(()))
     }
@@ -263,7 +274,7 @@ impl Client for DummyClient {
         Box::new(ok(()))
     }
     fn new_view(&mut self, file_path: Option<String>) -> ClientResult<ViewId> {
-        Box::new(ok((ViewId(0))))
+        Box::new(ok(ViewId(0)))
     }
     fn close_view(&mut self, view_id: ViewId) -> ClientResult<()> {
         Box::new(ok(()))

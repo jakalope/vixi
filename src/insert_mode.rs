@@ -55,12 +55,10 @@ where
                         state.client.right(state.view_id);
                     }
                     InsertOp::Home => {
-                        // TODO add support in Xi
-                        state.client.move_home(state.view_id);
+                        state.client.line_start(state.view_id);
                     }
                     InsertOp::End => {
-                        // TODO add support in Xi
-                        state.client.move_end(state.view_id);
+                        state.client.line_end(state.view_id);
                     }
                     InsertOp::PageUp => {
                         state.client.page_up(state.view_id);
